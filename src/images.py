@@ -3,8 +3,6 @@ import modules
 
 class Exif(modules.Module):
 
-    F = (None, None)
-
     @classmethod
     def keys(cls):
         return {
@@ -14,31 +12,29 @@ class Exif(modules.Module):
             'exif-time': cls.time
             }
 
-    @staticmethod
-    def cache(f):
-        if f != Exif.F[0]:
-            with open(f, 'rb') as fd:
-                Exif.F = (f, exif.Image(fd))
-        return Exif.F[1]
-
+    @classmethod
+    def open(cls, f):
+        with open(f, 'rb') as fd:
+            return exif.Image(fd)
+    
     @staticmethod
     def get(f, s):
         image = Exif.cache(f)
-        return Exif.F[1].get(s) if Exif.F[1].has_exif else None
+        return image.get(s) if image.has_exif else None
 
     @staticmethod
-    def camera(f, args):
+    def camera(_, f, args):
         return Exif.get(f, 'camera') or 'UnknownCamera'
 
     @staticmethod
-    def software(f, args):
+    def software(_, f, args):
         return Exif.get(f, 'software') or 'UnknownSoftware'
 
     @staticmethod
-    def flash(f, args):
+    def flash(_, f, args):
         return Exif.get(f, 'flash') or 'UnknownFlash'
 
     @staticmethod
-    def time(f, args):
+    def time(_, f, args):
         return Exif.get(f, 'datetime') or 'UnknownTime'
 modules.MODULES.append(Exif)

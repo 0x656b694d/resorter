@@ -11,12 +11,13 @@ setup(
     author_email='smartptr@gmail.com',
     classifiers=[
         'Development Status :: 3 - Alpha',
-        'Programming Language :: Python :: 3.8',
+        'License :: OSI Approved :: GNU General Public License, version 3',
+        'Programming Language :: Python :: 3.7',
         ],
     keywords='',
     package_dir={'': 'src'},
     packages=find_packages(where='src'),
-    python_requires='>3.4, <4',
+    python_requires='>=3.7, <4',
     extras_require={
         },
     entry_points={

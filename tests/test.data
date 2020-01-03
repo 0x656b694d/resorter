@@ -1,0 +1,6 @@
+filename.ext
+relative/path/filename.ext
+/absolute/path/filename.ext
+.hidden.ext
+.hidden
+

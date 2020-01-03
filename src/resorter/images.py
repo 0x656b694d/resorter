@@ -1,5 +1,5 @@
 import exif
-import modules
+import resorter.modules as modules
 
 class Exif(modules.Module):
 

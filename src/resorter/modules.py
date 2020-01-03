@@ -87,21 +87,22 @@ class FileInfo(Module):
 
     @staticmethod
     def name(_, f, args):
-        return Module.section(f.name, args)
+        return Module.section(os.path.basename(f.path), args)
     @staticmethod
     def path(_, f, args):
-        return Module.section(f.path, args)
+        return Module.section(os.path.dirname(f.path), args)
     @staticmethod
     def ext(_, f, args):
-        _, ext = os.path.splitext(f)
+        _, ext = os.path.splitext(f.path)
         return Module.section(ext, args)
     @staticmethod
     def nam(_, f, args):
-        root, _ = os.path.splitext(f)
+        root, _ = os.path.splitext(f.path)
         return Module.section(root, args)
 
     @staticmethod
     def size(_, f, args):
+        if isinstance(f, str): raise RuntimeError('method not supported')
         s = int(f.stat().st_size)
         if args is None: pass
         elif args in 'kK': s = s / 1024
@@ -113,21 +114,24 @@ class FileInfo(Module):
 
     @staticmethod
     def atime(_, f, args):
+        if isinstance(f, str): raise RuntimeError('method not supported')
         t = time.localtime(f.stat().st_atime)
         return time.strftime('%d-%b-%Y.%H%M%S' if args is None else args, t)
     @staticmethod
     def mtime(_, f, args):
+        if isinstance(f, str): raise RuntimeError('method not supported')
         t = time.localtime(f.stat().st_mtime)
         return time.strftime('%d-%b-%Y.%H%M%S' if args is None else args, t)
     @staticmethod
     def ctime(_, f, args):
+        if isinstance(f, str): raise RuntimeError('method not supported')
         t = time.localtime(f.stat().st_ctime)
         return time.strftime('%d-%b-%Y.%H%M%S' if args is None else args, t)
 
 MODULES=[Text, FileInfo]
 KEYS={}
 
-def update(args):
+def update():
     logging.debug('registering modules')
     for m in MODULES:
         logging.debug('... {0} ({1})'.format(m.__name__, ', '.join(m.keys())))

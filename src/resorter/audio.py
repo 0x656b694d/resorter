@@ -1,6 +1,6 @@
 import stagger
 
-import modules
+import resorter.modules as modules
 
 class Id3(modules.Module):
 

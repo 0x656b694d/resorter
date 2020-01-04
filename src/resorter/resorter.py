@@ -9,20 +9,15 @@ import resorter.modules as modules
 
 VERSION='0.1.0'
 
-def true(_):
-    return True
-def false(_):
-    return False
-
-
 class ModuleFilter(filters.Filter):
     def __init__(self, e):
-        self.m, e = e.rsplit('=', 1)
-        self.e = re.compile(e)
+        self.module, self.value_expr = e.rsplit('=', 1)
+        self.value_expr = re.compile(self.value_expr)
+        self.name = self.module + ' filter'
 
     def onEntry(self, f):
-        logging.debug("%s, %s", self.e.pattern, self.m)
-        return self.e.fullmatch(compute(f, self.m)) is not None
+        value = compute(f, self.module)
+        return self.value_expr.fullmatch(value)
 
 GROUP = re.compile(r'(\{[^}]+\})')
 PART = re.compile(r'([\w-]+)(\[[^\]]+\])?')
@@ -69,15 +64,15 @@ def get_filters(i, n, o):
     def add(ff, d):
         return [ModuleFilter(f) if f.startswith('{') else filters.RegexFilter(f) for f in ff] if ff else [d]
 
-    return (add(i, true), add(n, false), add(o, true))
+    return (add(i, filters.TrueFilter()), add(n, filters.FalseFilter()), add(o, filters.TrueFilter()))
 
 def resort(files, filters, expression, ask):
 
     ifilters, nifilters, ofilters = filters
 
-    logging.debug('ifilters %s', ','.join([f.__name__ for f in ifilters]))
-    logging.debug('nifilters %s', ''.join([f.__name__ for f in nifilters]))
-    logging.debug('ofilters %s', ''.join([f.__name__ for f in ofilters]))
+    logging.debug('ifilters %s', ','.join([f.name for f in ifilters]))
+    logging.debug('nifilters %s', ''.join([f.name for f in nifilters]))
+    logging.debug('ofilters %s', ''.join([f.name for f in ofilters]))
 
     files = filter(
         lambda f: any((i(f) for i in ifilters))

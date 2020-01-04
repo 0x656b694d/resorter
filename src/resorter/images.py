@@ -1,4 +1,5 @@
 import exif
+import datetime
 import resorter.modules as modules
 
 class Exif(modules.Module):
@@ -36,5 +37,10 @@ class Exif(modules.Module):
 
     @staticmethod
     def time(_, f, args):
-        return Exif.get(f, 'datetime') or 'UnknownTime'
+        date = Exif.get(f, 'datetime')
+        if not date:
+            return 'UnknownTime'
+        date = datetime.datetime.strptime(date, '%Y:%m:%d %H:%M:%S')
+        return date.strftime('%d-%b-%Y.%H%M%S' if args is None else args)
+
 modules.MODULES.append(Exif)

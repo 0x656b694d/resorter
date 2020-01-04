@@ -105,6 +105,8 @@ def main():
     for s, d in pairs:
         try:
             logging.debug('%srunning %s over %s to %s', 'dry ' if args.dry_run else '', args.action, s, d)
+            if not args.silent:
+                print('...{0}{1} {2} -> {3}'.format('dry ' if args.dry_run else '', args.action, s, d))
             if args.ask:
                 options = {'Confirm': 'cCyY', 'Ignore': 'iInN', 'Quit': 'qQxX'}
                 answer = ask_cli('{0}: {1} -> {2}\n'.format(args.action, s, d), options , 'c')

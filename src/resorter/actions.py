@@ -27,8 +27,14 @@ def action_move(source, dst, dry=False):
 def action_print(source, dst, dry=False):
     print('"{0}" "{1}"'.format(source.replace('"', '\\"'), dst.replace('"', '\\"')))
 
+def action_check(source, dst, dry=False):
+    if source != dst:
+        print('"{0}" <> "{1}"'.format(source, dst))
+
+
 ACTIONS = {
         'copy':  {'func': action_copy,  'help':'copy input file to the computed location'},
         'move':  {'func': action_move,  'help':'move file file to the computed location'},
-        'print': {'func': action_print, 'help':'print source and destination paths'}
+        'print': {'func': action_print, 'help':'print source and destination paths'},
+        'check': {'func': action_check, 'help':'check if the source and destination paths are equal'}
         }

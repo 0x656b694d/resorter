@@ -37,11 +37,12 @@ class Text(Module):
     @classmethod
     def keys(cls):
         return {
-            'cap': cls.cap,
-            'low': cls.low,
-            'up': cls.up,
-            'replace': cls.replace,
-            'decode': cls.decode
+            'cap': {'func': cls.cap, 'help': r'capitalize. Example: {name.cap}'},
+            'low': {'func': cls.low, 'help': r'lower case. Example: {name.low}'},
+            'up': {'func': cls.up, 'help': r'upper case. Example: {name.up}'},
+            'replace': {'func': cls.replace, 'help': r'replace characters. Two arguments: [from,to]. Example: {name.replace[ ,_]}'},
+            'decode': {'func': cls.decode, 'help': r'decode to current locale. Argument: [source encoding]. Example: {name.decode[cp1251]}'},
+            'sub': {'func': cls.sub, 'help': r'substring. Argument: [from:to]. Example: {exif-longitude.sub[0:4]}'}
         }
     
     @staticmethod
@@ -52,6 +53,13 @@ class Text(Module):
         if a is not None: result = s[:a] + result
         if b is not None: result = result + s[b:]
         return result
+
+    @staticmethod
+    def sub(_, s, args):
+        args = args.split(':',1)
+        if len(args) == 1:
+            return s[int(args[0])]
+        return s[int(args[0]):int(args[1])]
 
     @staticmethod
     def cap(_, s, args):
@@ -77,7 +85,7 @@ class Counter(Module):
     @classmethod
     def keys(cls):
         return {
-            'counter': cls.counter
+            'counter': {'func': cls.counter, 'help': r'counting number. Arguments: first number, counting step. Example: {nam}_{counter[100,10]}{ext}'}
         }
 
     @staticmethod
@@ -99,14 +107,14 @@ class FileInfo(Module):
     @classmethod
     def keys(cls):
         return {
-            'name': cls.name,
-            'path': cls.path,
-            'ext': cls.ext,
-            'nam': cls.nam,
-            'size': cls.size,
-            'atime': cls.atime,
-            'ctime': cls.ctime,
-            'mtime': cls.mtime
+            'name': {'func': cls.name, 'help': 'file name with extension, without path'},
+            'path': {'func': cls.path, 'help': 'file path without file name'},
+            'ext': {'func': cls.ext, 'help': 'file extension with leading dot'},
+            'nam': {'func': cls.nam, 'help': 'file name without extension'},
+            'size': {'func': cls.size, 'help': r'file size in bytes. Argument: multiplier k/m/g/t/p. Example: {size[m]}'},
+            'atime': {'func': cls.atime, 'help': r'file last access time. Argument: python time format string. Example: {atime[%Y]}'},
+            'ctime': {'func': cls.ctime, 'help': r'file creation time. Argument: python time format string. Example: {ctime[%Y]}'},
+            'mtime': {'func': cls.mtime, 'help': r'file last modification time. Argument: python time format string. Example: {mtime[%Y]}'},
         }
 
     @staticmethod
@@ -160,4 +168,11 @@ def update():
     for m in MODULES:
         logging.debug('... {0} ({1})'.format(m.__name__, ', '.join(m.keys())))
         KEYS.update(m.keys())
+
+def list_keys():
+    for m in MODULES:
+        print('Module {0}:'.format(m.__name__))
+        for k,v in m.keys().items():
+            print('\t{0} - {1}'.format(k, v['help']))
+        print()
 

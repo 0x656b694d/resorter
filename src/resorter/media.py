@@ -8,7 +8,7 @@ class Media(modules.Module):
     @classmethod
     def keys(cls):
         return {
-            'track': cls.track,
+            'track': {'func': cls.track, 'help': r'MediaInfo (https://mediaarea.net/en/MediaInfo) track data. Arguments: track id or type, property. Example: {track[Video,format]}'},
             } if MediaInfo.can_parse() else {}
 
     @classmethod

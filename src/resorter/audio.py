@@ -7,13 +7,13 @@ class Id3(modules.Module):
     @classmethod
     def keys(cls):
         return {
-            'id3-composer': cls.tag,
-            'id3-title': cls.tag,
-            'id3-album': cls.tag,
-            'id3-artist': cls.tag,
-            'id3-genre': cls.tag,
-            'id3-disc': cls.tag,
-            'id3-track': cls.tag
+            'id3-composer': {'func': cls.tag, 'help': r'composer'},
+            'id3-title': {'func': cls.tag, 'help': r'title'},
+            'id3-album': {'func': cls.tag, 'help': r'album'},
+            'id3-artist': {'func': cls.tag, 'help': r'artist'},
+            'id3-genre': {'func': cls.tag, 'help': r'genre'},
+            'id3-disc': {'func': cls.tag, 'help': r'disc'},
+            'id3-track': {'func': cls.tag, 'help': r'track'},
         }
     
     @classmethod

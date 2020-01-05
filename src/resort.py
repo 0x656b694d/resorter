@@ -46,6 +46,10 @@ def parse_args():
                         const=True, default=False,
                         help='print debug messages')
 
+    parser.add_argument('--list-keys', dest='list_keys', action='store_const',
+                        const=True, default=False,
+                        help='list available keys')
+
     parser.add_argument('-a', '--ask', dest='ask', action='store_const',
                         const=True, default=False,
                         help='ask confirmation on each file')
@@ -80,6 +84,7 @@ def ask_cli(msg, opts, default=None):
 def main():
 
     args = parse_args()
+
     loglevel = logging.CRITICAL if args.silent else logging.WARNING
     if args.verbose:
         loglevel = logging.INFO
@@ -89,6 +94,9 @@ def main():
         format='%(levelname)s:%(module)s.%(funcName)s: %(message)s', level=loglevel)
     
     resorter.modules.update()
+    if args.list_keys:
+        resorter.modules.list_keys()
+        return
 
     filters = resorter.resorter.get_filters(args.ifilter, args.nifilter, args.ofilter)
     

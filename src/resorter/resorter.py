@@ -33,17 +33,55 @@ def parse_module(part):
             key = None
             continue
         if key:
-            value.append({'func': modules.KEYS[key], 'key': key, 'args': m.strip('[]') if m is not None else None})
+            value.append({'func': modules.KEYS[key]['func'], 'key': key, 'args': m.strip('[]') if m is not None else None})
             key = None
         else:
             key = m
     logging.debug('parsed module %s', value)
     return value
 
+def split(s, sep):
+    result = []
+    word = []
+    open_brackets = r'{[('
+    close_brackets = r'}])'
+    brackets = []
+    for ch in s:
+        if ch in sep and not len(brackets):
+            if len(word):
+                result.append(''.join(word))
+                word = []
+            result.append(ch)
+            continue
+        if ch in open_brackets:
+            brackets.append(ch)
+            if ch == '{':
+                result.append(''.join(word))
+                word = []
+            word.append(ch)
+        elif ch in close_brackets:
+            b = brackets.pop()
+            word.append(ch)
+            if ch == '}':
+                result.append(''.join(word))
+                word = []
+            if open_brackets.find(b) != close_brackets.find(ch):
+                raise Exception('Unmatched bracket {0} in {1}'.format(ch, s))
+        else:
+            word.append(ch)
+    if len(word):
+        result.append(''.join(word))
+    if len(brackets):
+        raise Exception('Unmatched brackets {0} in {1}'.format(''.join(brackets), s))
+    return result
+
+
 def parse(expression):
-    expr_list = expression.split(os.sep)
+    expr_list = split(expression, os.sep)
+    logging.debug('Split expression: (%s)', '|'.join(expr_list))
     result = []
     for e in expr_list:
+
         for part in GROUP_RE.split(e):
             logging.debug('found part %s', part)
             result.append(parse_module(part) if part.startswith('{') else part)
@@ -60,12 +98,13 @@ def compute_module(module, f):
 def compute(modules, f):
     result = []
     for module in modules:
+        if not len(module): continue
         logging.debug('computing %s', module)
         if isinstance(module, str):
             result.append(module)
         elif isinstance(module, list):
             result.append(compute_module(module, f))
-    return '' if not len(result) else os.path.join(*result)
+    return ''.join(result) #'' if not len(result) else os.path.join(*result)
 
 def process(files, expression, ask):
     modules = parse(expression)

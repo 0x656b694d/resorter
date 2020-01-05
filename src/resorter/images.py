@@ -7,10 +7,13 @@ class Exif(modules.Module):
     @classmethod
     def keys(cls):
         return {
-            'exif-camera': cls.camera,
-            'exif-flash': cls.flash,
-            'exif-software': cls.software,
-            'exif-time': cls.time
+            'exif-camera': {'func': cls.camera, 'help': r''},
+            'exif-flash': {'func': cls.flash, 'help': r''},
+            'exif-software': {'func': cls.software, 'help': r''},
+            'exif-time': {'func': cls.time, 'help': r''},
+            'exif-longitude': {'func': cls.coo, 'help': r'GPS longitude'},
+            'exif-latitude': {'func': cls.coo, 'help': r'GPS latitude'},
+            'exif-altitude': {'func': cls.altitude, 'help': r'GPS altitude'},
             }
 
     @classmethod
@@ -22,6 +25,15 @@ class Exif(modules.Module):
     def get(f, s):
         image = Exif.cache(f)
         return image.get(s) if image.has_exif else None
+
+    @staticmethod
+    def coo(key, f, args):
+        d,m,s = Exif.get(f, 'gps_'+key.lstrip('exif-'))
+        return str(d + m/60 + s/3600)
+
+    @staticmethod
+    def altitude(_, f, args):
+        return str(Exif.get(f, 'gps_altitude'))
 
     @staticmethod
     def camera(_, f, args):

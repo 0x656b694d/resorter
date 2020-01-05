@@ -70,6 +70,30 @@ class Text(Module):
     def decode(_, s, args):
         return codecs.decode(s, args)
 
+class Counter(Module):
+    count = None
+    step = 1
+
+    @classmethod
+    def keys(cls):
+        return {
+            'counter': cls.counter
+        }
+
+    @staticmethod
+    def counter(_, f, args):
+        print(Counter.count)
+        if Counter.count is None:
+            args = args.split(',', 1)
+            Counter.count = 0
+            if len(args) == 2:
+                Counter.count, Counter.step = [int(i) for i in args]
+            else:
+                Counter.count = int(args[0])
+        logging.debug('counting %s by %s', Counter.count, Counter.step)
+        Counter.count += Counter.step
+        return str(Counter.count)
+
 class FileInfo(Module):
 
     @classmethod
@@ -128,7 +152,7 @@ class FileInfo(Module):
         t = time.localtime(f.stat().st_ctime)
         return time.strftime('%d-%b-%Y.%H%M%S' if args is None else args, t)
 
-MODULES=[Text, FileInfo]
+MODULES=[Text, Counter, FileInfo]
 KEYS={}
 
 def update():

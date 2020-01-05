@@ -12,6 +12,7 @@ import resorter.modules
 
 import resorter.images
 import resorter.audio
+import resorter.media
 
 def parse_args():
     examples = """

@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('action',
                         help='action to be executed over input files ({0})'.format(', '.join(actions.keys())))
     parser.add_argument('expression',
-                        help='specify the expression to format the destination')
+                        help='specify the expression to format the destination or a single line @file name')
 
     parser.add_argument('-f', '--from', dest='input', nargs='?', default=sys.stdin,
                         help='read file names from a directory, a file. Default: stdin')
@@ -56,7 +56,7 @@ def parse_args():
     parser.add_argument('-p', '--stop', dest='stop', action='store_const',
                         const=True, default=False,
                         help='stop on first failure')
-    parser.add_argument('-i', '--ignore', dest='irgnore', action='store_const',
+    parser.add_argument('-i', '--ignore', dest='ignore', action='store_const',
                         const=True, default=False,
                         help='ignore failures')
     parser.add_argument('-r', '--recursive', dest='recursive', action='store_const',
@@ -108,7 +108,12 @@ def main():
     else:
         files = resorter.utils.get_from_file(args.input, args.recursive)
 
-    pairs = resorter.resorter.resort(files, filters, args.expression, ask_cli)
+    expression = args.expression
+    if args.expression.startswith('@'):
+        with open(expression.lstrip('@'), 'r') as f:
+            expression = ''.join(f.readlines())
+
+    pairs = resorter.resorter.resort(files, filters, expression, ask_cli)
     
     action = resorter.actions.ACTIONS[args.action]['func']
     for s, d in pairs:

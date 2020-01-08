@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import logging
 import codecs
@@ -19,12 +20,16 @@ class Module(object):
 
     @staticmethod
     def range(args):
+        a,b=0,-1
         if args is None:
-            return None
-        a,b = None,None
-        r = args.split(':')
-        if len(r[0]): a = int(r[0])
-        if len(r) > 1 and len(r[1]): b = int(r[1])
+            return (a,b)
+        if len(args) > 0:
+            if args[0]:
+                a = int(args[0])
+            b = a + 1
+        if len(args) > 1 and args[1]:
+            b = int(args[1])
+
         return (a,b)
 
     @staticmethod
@@ -33,6 +38,16 @@ class Module(object):
         a,b = Module.range(args)
         return s[a:b]
 
+class Num(Module):
+    @classmethod
+    def keys(cls):
+        return {
+            'round': {'func': cls.round, 'help': r'round a number. Argument: [precision]. Example: {size[k].round[1]}'},
+        }
+    @staticmethod
+    def round(_, n, args):
+        return round(n, args)
+
 class Text(Module):
     @classmethod
     def keys(cls):
@@ -40,27 +55,29 @@ class Text(Module):
             'cap': {'func': cls.cap, 'help': r'capitalize. Example: {name.cap}'},
             'low': {'func': cls.low, 'help': r'lower case. Example: {name.low}'},
             'up': {'func': cls.up, 'help': r'upper case. Example: {name.up}'},
+            'title': {'func': cls.title, 'help': r'title case. Example: {name.title}'},
             'replace': {'func': cls.replace, 'help': r'replace characters. Two arguments: [from,to]. Example: {name.replace[ ,_]}'},
             'decode': {'func': cls.decode, 'help': r'decode to current locale. Argument: [source encoding]. Example: {name.decode[cp1251]}'},
-            'sub': {'func': cls.sub, 'help': r'substring. Argument: [from:to]. Example: {exif-longitude.sub[0:4]}'}
+            'sub': {'func': cls.sub, 'help': r'substring. Argument: [from,to]. Example: {exif-longitude.sub[0,4]}'},
+            'index': {'func': cls.index, 'help': r'position of a substring. Argument: [substring]. Example: {name.sub[0,name.index[_]]}'},
         }
     
     @staticmethod
-    def change(args, s, f):
-        if args is None: return f(s)
+    def change(args, s, func):
+        logging.debug(f'changing text in {s} at {args!r}')
+        if args is None: return func(s)
         a,b = Module.range(args)
-        result = f(s[a:b])
+        result = func(s[a:b])
         if a is not None: result = s[:a] + result
         if b is not None: result = result + s[b:]
         return result
 
     @staticmethod
     def sub(_, s, args):
-        args = args.split(':',1)
-        if len(args) == 1:
-            return s[int(args[0])]
-        return s[int(args[0]):int(args[1])]
-
+        return Module.section(s, args)
+    @staticmethod
+    def index(_, s, args):
+        return s.find(args)
     @staticmethod
     def cap(_, s, args):
         return Text.change(args, s, str.capitalize)
@@ -71,9 +88,11 @@ class Text(Module):
     def up(_, s, args):
         return Text.change(args, s, str.upper)
     @staticmethod
+    def title(_, s, args):
+        return Text.change(args, s, str.title)
+    @staticmethod
     def replace(_, s, args):
-        a = args.split(',', 1)
-        return s.replace(a[0], a[1])
+        return s.replace(*args)
     @staticmethod
     def decode(_, s, args):
         return codecs.decode(s, args)
@@ -109,6 +128,7 @@ class FileInfo(Module):
         return {
             'name': {'func': cls.name, 'help': 'file name with extension, without path'},
             'path': {'func': cls.path, 'help': 'file path without file name'},
+            'abspath': {'func': cls.abspath, 'help': 'absolute file path without file name'},
             'ext': {'func': cls.ext, 'help': 'file extension with leading dot'},
             'nam': {'func': cls.nam, 'help': 'file name without extension'},
             'size': {'func': cls.size, 'help': r'file size in bytes. Argument: multiplier k/m/g/t/p. Example: {size[m]}'},
@@ -120,6 +140,9 @@ class FileInfo(Module):
     @staticmethod
     def name(_, f, args):
         return Module.section(os.path.basename(f.path), args)
+    @staticmethod
+    def abspath(_, f, args):
+        return Module.section(os.path.abspath(os.path.dirname(f.path)), args)
     @staticmethod
     def path(_, f, args):
         return Module.section(os.path.dirname(f.path), args)
@@ -142,7 +165,7 @@ class FileInfo(Module):
         elif args in 'gG': s = s / 1024 / 1024 / 1024
         elif args in 'tT': s = s / 1024 / 1024 / 1024 / 1024
         elif args in 'pP': s = s / 1024 / 1024 / 1024 / 1024 / 1024
-        return int(s)
+        return s
 
     @staticmethod
     def atime(_, f, args):
@@ -160,7 +183,8 @@ class FileInfo(Module):
         t = time.localtime(f.stat().st_ctime)
         return time.strftime('%d-%b-%Y.%H%M%S' if args is None else args, t)
 
-MODULES=[Text, Counter, FileInfo]
+
+MODULES=[Text, Num, Counter, FileInfo]
 KEYS={}
 
 def update():
@@ -176,3 +200,8 @@ def list_keys():
             print('\t{0} - {1}'.format(k, v['help']))
         print()
 
+def find_module(key):
+    for module in MODULES:
+        func = module.get(key, None)
+        if func:
+            return func['func']

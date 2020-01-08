@@ -8,20 +8,46 @@ import traceback
 import resorter.actions as actions
 import resorter.filters as filters
 import resorter.modules as modules
+import resorter.utils as utils
 
 VERSION='0.1.0'
 
 class ModuleFilter(filters.Filter):
     def __init__(self, e):
-        self.module, self.value_expr = e.rsplit('=', 1)
-        self.value_expr = re.compile(self.value_expr)
+
+        expr = split(e, '')
+        self.module = expr[0]
+        op = ''
+        for ch in expr[1]:
+            if ch in '=<>~':
+                op += ch
+            else: break
+        self.op = op
+        if op == '~':
+            self.value = re.compile(expr[1][len(op):])
+        else:
+            self.value = expr[1][len(op):]
+
         self.func = parse_module(self.module)
         self.name = self.module + ' filter'
 
     def onEntry(self, f):
         value = compute_module(self.func, f)
-        logging.debug('value=%s', value)
-        return self.value_expr.fullmatch(value)
+        logging.debug('value %s', value)
+        if self.op == '~':
+            return self.value.fullmatch(value)
+        value = type(self.value)(value)
+        if self.op in '==':
+            return value == self.value
+        if self.op == '>=':
+            return value >= self.value
+        if self.op == '<=':
+            return value <= self.value
+        if self.op == '>':
+            return value > self.value
+        if self.op == '<':
+            return value < self.value
+
 
 GROUP_RE = re.compile(r'(\{[^}]+\})')
 PART_RE = re.compile(r'([\w-]+)(\[[^\]]+\])?')
@@ -40,6 +66,75 @@ def parse_module(part):
     logging.debug('parsed module %s', value)
     return value
 
+class Expression(object):
+    def __init__(self, expr):
+        tokens = utils.tokenize(expr.strip('{}'), modules.KEYS)
+        polish = utils.polish(tokens)
+        # Translate ID to module function
+        for kv in polish:
+            kind, value = kv
+            if kind == 'FUNC':
+                kv[1] = (value.name, modules.KEYS[value.name]['func'])
+
+        self.polish = polish
+
+    def calc(self, f):
+        result = []
+        class Dot(): pass
+        class Args(): pass
+
+        for kind, value in self.polish:
+            logging.debug(f'... {kind} {value}')
+            if kind == 'OP':
+                if value == '.':
+                    logging.debug('found dot!')
+                    result.append(Dot())
+                    continue
+                b = result.pop()
+                a = result.pop()
+                if value == '+':
+                    result.append(a+b)
+                elif value == '-':
+                    result.append(a-b)
+                elif value == '*':
+                    result.append(a*b)
+                elif value == '/':
+                    result.append(a/b)
+                elif value == ',':
+                    logging.debug(f'/////// {a!r} /// {b!r}')
+                    if isinstance(a, list):
+                        a.append(b)
+                        result.append(a)
+                    else:
+                        result.append([a,b])
+                elif value == '%':
+                    result.append(a%b)
+                elif value == '^':
+                    result.append(a**b)
+            elif kind == 'ARGS':
+                result.append(Args())
+            elif kind == 'FUNC':
+                args = None
+                if len(result) and isinstance(result[-1], Args):
+                    result.pop()
+                    args = result.pop()
+                key, func = value
+                v = f
+                if len(result) and isinstance(result[-1], Dot):
+                    result.pop()
+                    v = result.pop()
+                logging.debug(f'executing {key} on {v} with {args}')
+                v = func(key, v, args)
+                logging.debug(f'got {v}')
+                result.append(v)
+            else:
+                logging.debug(f'adding {value}')
+                result.append(value)
+            logging.debug(f'result: {result!r}')
+
+        logging.debug(f'computed {result!r}')
+        return result.pop()
+
 def split(s, sep):
     result = []
     word = []
@@ -55,59 +150,37 @@ def split(s, sep):
             continue
         if ch in open_brackets:
             brackets.append(ch)
-            if ch == '{':
+            if ch == '{' and len(word):
                 result.append(''.join(word))
                 word = []
             word.append(ch)
         elif ch in close_brackets:
             b = brackets.pop()
+            if open_brackets.find(b) != close_brackets.find(ch):
+                raise Exception(f'Unmatched bracket {ch} in {s}')
             word.append(ch)
             if ch == '}':
-                result.append(''.join(word))
+                result.append(Expression(''.join(word)))
                 word = []
-            if open_brackets.find(b) != close_brackets.find(ch):
-                raise Exception('Unmatched bracket {0} in {1}'.format(ch, s))
         else:
             word.append(ch)
     if len(word):
         result.append(''.join(word))
     if len(brackets):
-        raise Exception('Unmatched brackets {0} in {1}'.format(''.join(brackets), s))
+        raise RuntimeError(f'Unmatched brackets {brackets!r} in {s}')
     return result
-
-
-def parse(expression):
-    expr_list = split(expression, os.sep)
-    logging.debug('Split expression: (%s)', '|'.join(expr_list))
-    result = []
-    for e in expr_list:
-
-        for part in GROUP_RE.split(e):
-            logging.debug('found part %s', part)
-            result.append(parse_module(part) if part.startswith('{') else part)
-    return result
-
-def compute_module(module, f):
-    value = f
-    for m in module:
-        key, func, args = m['key'], m['func'], m['args']
-        logging.debug('applying %s on %s with %s', key, value, args)
-        value = func(key, value, args)
-    return value
 
 def compute(modules, f):
     result = []
     for module in modules:
-        if not len(module): continue
-        logging.debug('computing %s', module)
-        if isinstance(module, str):
+        if isinstance(module, Expression):
+            result.append(module.calc(f))
+        else:
             result.append(module)
-        elif isinstance(module, list):
-            result.append(compute_module(module, f))
-    return ''.join(result) #'' if not len(result) else os.path.join(*result)
+    return ''.join(str(r) for r in result)
 
 def process(files, expression, ask):
-    modules = parse(expression)
+    modules = split(expression, os.sep)
     for f in files:
         try:
             logging.debug('resorting %s', f.path)
@@ -147,3 +220,5 @@ def resort(files, filters, expression, ask):
     )
 
     return pairs
+
+

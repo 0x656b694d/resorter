@@ -45,8 +45,8 @@ class Num(Module):
             'round': {'func': cls.round, 'help': r'round a number. Argument: [precision]. Example: {size[k].round[1]}'},
         }
     @staticmethod
-    def round(_, n, args):
-        return round(n, args)
+    def round_func(_, n, args):
+        return round(n, *args) if args else round(n)
 
 class Text(Module):
     @classmethod
@@ -56,9 +56,9 @@ class Text(Module):
             'low': {'func': cls.low, 'help': r'lower case. Example: {name.low}'},
             'up': {'func': cls.up, 'help': r'upper case. Example: {name.up}'},
             'title': {'func': cls.title, 'help': r'title case. Example: {name.title}'},
-            'replace': {'func': cls.replace, 'help': r'replace characters. Two arguments: [from,to]. Example: {name.replace[ ,_]}'},
+            'replace': {'func': cls.replace, 'help': r"replace characters. Two arguments: [from,to]. Example: {name.replace[' ','_']}"},
             'decode': {'func': cls.decode, 'help': r'decode to current locale. Argument: [source encoding]. Example: {name.decode[cp1251]}'},
-            'sub': {'func': cls.sub, 'help': r'substring. Argument: [from,to]. Example: {exif-longitude.sub[0,4]}'},
+            'sub': {'func': cls.sub, 'help': r'substring. Argument: [from,to]. Example: {name.sub[0,4]}'},
             'index': {'func': cls.index, 'help': r'position of a substring. Argument: [substring]. Example: {name.sub[0,name.index[_]]}'},
         }
     
@@ -77,7 +77,7 @@ class Text(Module):
         return Module.section(s, args)
     @staticmethod
     def index(_, s, args):
-        return s.find(args)
+        return s.find(*args)
     @staticmethod
     def cap(_, s, args):
         return Text.change(args, s, str.capitalize)
@@ -95,7 +95,7 @@ class Text(Module):
         return s.replace(*args)
     @staticmethod
     def decode(_, s, args):
-        return codecs.decode(s, args)
+        return codecs.decode(s, *args)
 
 class Counter(Module):
     count = None
@@ -104,22 +104,21 @@ class Counter(Module):
     @classmethod
     def keys(cls):
         return {
-            'counter': {'func': cls.counter, 'help': r'counting number. Arguments: first number, counting step. Example: {nam}_{counter[100,10]}{ext}'}
+            'counter': {'func': cls.counter, 'help': r'counting number. Arguments: [start,step]. Example: {nam}_{counter[100,10]}{ext}'}
         }
 
     @staticmethod
     def counter(_, f, args):
         print(Counter.count)
         if Counter.count is None:
-            args = args.split(',', 1)
             Counter.count = 0
-            if len(args) == 2:
-                Counter.count, Counter.step = [int(i) for i in args]
-            else:
-                Counter.count = int(args[0])
+            if len(args) > 0:
+                Counter.count = args[0]
+            if len(args) > 1:
+                Counter.step = args[1]
         logging.debug('counting %s by %s', Counter.count, Counter.step)
         Counter.count += Counter.step
-        return str(Counter.count)
+        return Counter.count
 
 class FileInfo(Module):
 
@@ -131,10 +130,10 @@ class FileInfo(Module):
             'abspath': {'func': cls.abspath, 'help': 'absolute file path without file name'},
             'ext': {'func': cls.ext, 'help': 'file extension with leading dot'},
             'nam': {'func': cls.nam, 'help': 'file name without extension'},
-            'size': {'func': cls.size, 'help': r'file size in bytes. Argument: multiplier k/m/g/t/p. Example: {size[m]}'},
-            'atime': {'func': cls.atime, 'help': r'file last access time. Argument: python time format string. Example: {atime[%Y]}'},
-            'ctime': {'func': cls.ctime, 'help': r'file creation time. Argument: python time format string. Example: {ctime[%Y]}'},
-            'mtime': {'func': cls.mtime, 'help': r'file last modification time. Argument: python time format string. Example: {mtime[%Y]}'},
+            'size': {'func': cls.size, 'help': r'file size in bytes. Argument: [metric prefix k/m/g/t/p]. Example: {size[m]}'},
+            'atime': {'func': cls.atime, 'help': r"file last access time. Argument: [python time format string]. Example: {atime['%Y']}"},
+            'ctime': {'func': cls.ctime, 'help': r"file creation time. Argument: [python time format string]. Example: {ctime['%Y']}"},
+            'mtime': {'func': cls.mtime, 'help': r"file last modification time. Argument: [python time format string]. Example: {mtime['%Y']}"},
         }
 
     @staticmethod
@@ -200,8 +199,9 @@ def list_keys():
             print('\t{0} - {1}'.format(k, v['help']))
         print()
 
-def find_module(key):
+def find_module_not_used(key):
     for module in MODULES:
         func = module.get(key, None)
         if func:
             return func['func']
+

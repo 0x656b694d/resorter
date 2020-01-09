@@ -1,5 +1,10 @@
+try:
+    from pymediainfo import MediaInfo
+    OK = True
+except:
+    OK = False
+
 import logging
-from pymediainfo import MediaInfo
 import datetime
 import resorter.modules as modules
 
@@ -20,7 +25,7 @@ class Media(modules.Module):
         logging.debug('reading %s from %s', args, f)
         media = Media.cache(f)
         logging.debug('found media %s', media)
-        t = args.split(',', 1)
+        t = args
         if len(t) == 1:
             prop = t[0]
             n = None
@@ -33,4 +38,5 @@ class Media(modules.Module):
             return t.to_data().get(prop, unknown)
         return unknown
 
-modules.MODULES.append(Media)
+if OK:
+    modules.MODULES.append(Media)

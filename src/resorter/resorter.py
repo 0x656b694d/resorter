@@ -118,6 +118,8 @@ class Expression(object):
                 if len(result) and isinstance(result[-1], Args):
                     result.pop()
                     args = result.pop()
+                    if not isinstance(args, list):
+                        args = [ args ]
                 key, func = value
                 v = f
                 if len(result) and isinstance(result[-1], Dot):

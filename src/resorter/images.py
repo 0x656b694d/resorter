@@ -1,4 +1,9 @@
-import exif
+try:
+    import exif
+    OK = True
+except:
+    OK = False
+
 import datetime
 import resorter.modules as modules
 
@@ -7,13 +12,13 @@ class Exif(modules.Module):
     @classmethod
     def keys(cls):
         return {
-            'exif-camera': {'func': cls.camera, 'help': r''},
-            'exif-flash': {'func': cls.flash, 'help': r''},
-            'exif-software': {'func': cls.software, 'help': r''},
-            'exif-time': {'func': cls.time, 'help': r''},
-            'exif-longitude': {'func': cls.coo, 'help': r'GPS longitude'},
-            'exif-latitude': {'func': cls.coo, 'help': r'GPS latitude'},
-            'exif-altitude': {'func': cls.altitude, 'help': r'GPS altitude'},
+            'exif_camera': {'func': cls.camera, 'help': r''},
+            'exif_flash': {'func': cls.flash, 'help': r''},
+            'exif_software': {'func': cls.software, 'help': r''},
+            'exif_time': {'func': cls.time, 'help': r''},
+            'exif_lon': {'func': cls.coo, 'help': r'GPS longitude'},
+            'exif_lat': {'func': cls.coo, 'help': r'GPS latitude'},
+            'exif_alt': {'func': cls.altitude, 'help': r'GPS altitude'},
             }
 
     @classmethod
@@ -28,12 +33,12 @@ class Exif(modules.Module):
 
     @staticmethod
     def coo(key, f, args):
-        d,m,s = Exif.get(f, 'gps_'+key.lstrip('exif-'))
-        return str(d + m/60 + s/3600)
+        d,m,s = Exif.get(f, 'gps_'+key.lstrip('exif_'))
+        return d + m/60 + s/3600
 
     @staticmethod
     def altitude(_, f, args):
-        return str(Exif.get(f, 'gps_altitude'))
+        return Exif.get(f, 'gps_altitude')
 
     @staticmethod
     def camera(_, f, args):
@@ -55,4 +60,5 @@ class Exif(modules.Module):
         date = datetime.datetime.strptime(date, '%Y:%m:%d %H:%M:%S')
         return date.strftime('%d-%b-%Y.%H%M%S' if args is None else args)
 
-modules.MODULES.append(Exif)
+if OK:
+    modules.MODULES.append(Exif)

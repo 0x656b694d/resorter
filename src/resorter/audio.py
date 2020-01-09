@@ -1,4 +1,8 @@
-import stagger
+try:
+    import stagger
+    OK = True
+except:
+    OK = False
 
 import resorter.modules as modules
 
@@ -25,4 +29,5 @@ class Id3(modules.Module):
         id3 = Id3.cache(f)
         return id3.__getattribute__(key.lstrip('id3-'))
 
-modules.MODULES.append(Id3)
+if OK:
+    modules.MODULES.append(Id3)

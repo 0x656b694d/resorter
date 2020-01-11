@@ -42,7 +42,7 @@ def tokenize(expr, keywords):
             ('STRING',   r"'[^']*'"),
             ('STRING2',  r'"[^"]*"'),
             ('ID',       r'[A-Za-z_]+'),   # Identifiers
-            ('OP',       r'[+\-*/\^.,]'),  # Arithmetic operators
+            ('OP',       r'[+\-*/\^.,%]'),  # Arithmetic operators
             ('BRACKETS', r'[\(\)\[\]]'),   # Brackets
             ('SKIP',     r'[ \t]+'),       # Skip over spaces and tabs
             ('MISMATCH', r'.'),            # Any other character
@@ -63,7 +63,7 @@ def tokenize(expr, keywords):
         elif kind == 'SKIP':
             continue
         elif kind == 'MISMATCH':
-            raise RuntimeError(f'unexpected {value!r}')
+            raise RuntimeError(f'unexpected {value!r} while parsing {expr}')
         yield (kind, value)
 
 class Func(object):
@@ -80,11 +80,19 @@ class Func(object):
         return self.name.__hash__()
 
 def polish(tokens):
-        ops = [',','+','-','/','*',r'%','^','.']
+        ops = [',','+','-','^','/','*','%','.']
         result = []
         ops_q = []
         brackets = { '[': ']', '(': ')' }
         logging.debug('Polishing')
+        def pops(op):
+            if isinstance(op, Func):
+                return ['FUNC', op]
+            elif op == 'ARGS':
+                return [op, None]
+            else:
+                return ['OP', op]
+
         for kind, value in tokens:
             logging.debug(f'found token {kind}: {value}')
             logging.debug(f'ops queue: {ops_q!r}')
@@ -93,6 +101,8 @@ def polish(tokens):
                     top = ops_q[-1]
                     if isinstance(top, Func):
                         result.append(['FUNC', ops_q.pop()])
+                    elif top == 'ARGS':
+                        result.append([ops_q.pop(), None])
                     elif top in ops and ops.index(top) >= ops.index(value):
                         result.append(['OP', ops_q.pop()])
                     else:
@@ -102,23 +112,23 @@ def polish(tokens):
                 ops_q.append(Func(value))
             elif kind == 'BRACKETS':
                 if value in brackets.keys():
+                    if len(ops_q) and isinstance(ops_q[-1], Func):
+                        ops_q.append('ARGS')
                     ops_q.append(value)
                 if value in brackets.values():
                     while len(ops_q):
                         v = ops_q.pop()
                         if v in brackets.keys():
                             if brackets[v] == value:
-                                if value == ']':
-                                    result.append(['ARGS', True])
                                 break
                             else:
                                 raise RuntimeError(f'Bracket {v!r} mismatch')
-                        result.append(['FUNC' if isinstance(v, Func) else 'OP', v])
+                        result.append(pops(v))
             else:
                 result.append([kind, value])
         ops_q.reverse()
         for op in ops_q:
-            result.append(['FUNC' if isinstance(op, Func) else 'OP', op])
+            result.append(pops(op))
         logging.debug(f'Polish notation: {result!r}')
         return result
 

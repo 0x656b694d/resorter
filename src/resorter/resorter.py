@@ -56,61 +56,80 @@ def parse_module(part):
     value = []
     for m in PART_RE.split(part.strip('{}')):
         if m == '' or m == '.':
-            key = None
+            func = None
             continue
-        if key:
-            value.append({'func': modules.KEYS[key]['func'], 'key': key, 'args': m.strip('[]') if m is not None else None})
-            key = None
+        if func:
+            value.append({'func': modules.FUNCTIONS[func]['func'], 'func': func, 'args': m.strip('[]') if m is not None else None})
+            func = None
         else:
-            key = m
+            func = m
     logging.debug('parsed module %s', value)
     return value
 
 class Expression(object):
     def __init__(self, expr):
-        tokens = utils.tokenize(expr.strip('{}'), modules.KEYS)
+        tokens = utils.tokenize(expr.strip('{}'), modules.FUNCTIONS)
         polish = utils.polish(tokens)
         # Translate ID to module function
         for kv in polish:
             kind, value = kv
             if kind == 'FUNC':
-                kv[1] = (value.name, modules.KEYS[value.name]['func'])
+                kv[1] = (value.name, modules.FUNCTIONS[value.name]['func'])
 
         self.polish = polish
 
-    def calc(self, f):
+    def calc(self, source):
         result = []
         class Dot(): pass
         class Args(): pass
 
+        def callf(farg, source):
+            if not isinstance(farg, list):
+                return farg
+            f, args = farg
+            name, func = f
+            v = func(name, source, args)
+            logging.debug(f'{name}({args!r}) returned {v}')
+            return v
+
         for kind, value in self.polish:
             logging.debug(f'... {kind} {value}')
             if kind == 'OP':
-                if value == '.':
-                    logging.debug('found dot!')
-                    result.append(Dot())
-                    continue
                 b = result.pop()
                 a = result.pop()
-                if value == '+':
-                    result.append(a+b)
-                elif value == '-':
-                    result.append(a-b)
-                elif value == '*':
-                    result.append(a*b)
-                elif value == '/':
-                    result.append(a/b)
-                elif value == ',':
-                    logging.debug(f'/////// {a!r} /// {b!r}')
+                if value == ',':
                     if isinstance(a, list):
                         a.append(b)
                         result.append(a)
                     else:
                         result.append([a,b])
-                elif value == '%':
-                    result.append(a%b)
-                elif value == '^':
-                    result.append(a**b)
+                elif value == '.':
+                    logging.debug(f'computing {a!r}.{b!r}')
+                    v = callf(a, source)
+                    v = callf(b, v)
+                    result.append(v)
+                else:
+                    a = callf(a, source)
+                    b = callf(b, source)
+ 
+                    if type(a) not in [int, float]:
+                        a = str(a)
+                        a = (float if '.' in a else int)(a)
+                    if type(b) not in [int, float]:
+                        b = str(b)
+                        b = (float if '.' in b else int)(b)
+                    if value == '+':
+                        result.append(a+b)
+                    elif value == '-':
+                        result.append(a-b)
+                    elif value == '*':
+                        result.append(a*b)
+                    elif value == '/':
+                        result.append(a/b)
+                    elif value == '%':
+                        result.append(a%b)
+                    elif value == '^':
+                        result.append(a**b)
             elif kind == 'ARGS':
                 result.append(Args())
             elif kind == 'FUNC':
@@ -120,22 +139,16 @@ class Expression(object):
                     args = result.pop()
                     if not isinstance(args, list):
                         args = [ args ]
-                key, func = value
-                v = f
-                if len(result) and isinstance(result[-1], Dot):
-                    result.pop()
-                    v = result.pop()
-                logging.debug(f'executing {key} on {v} with {args}')
-                v = func(key, v, args)
-                logging.debug(f'got {v}')
-                result.append(v)
+                result.append([value, args])
             else:
                 logging.debug(f'adding {value}')
                 result.append(value)
             logging.debug(f'result: {result!r}')
+        
+        result = callf(result.pop(), source)
 
         logging.debug(f'computed {result!r}')
-        return result.pop()
+        return result
 
 def split(s, sep):
     result = []
@@ -185,7 +198,7 @@ def process(files, expression, ask):
     modules = split(expression, os.sep)
     for f in files:
         try:
-            logging.debug('resorting %s', f.path)
+            logging.debug(f'resorting {f!r}')
             yield (f.path, compute(modules, f))
         except Exception as e:
             logging.warning('Exception: %s', e)

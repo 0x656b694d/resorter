@@ -40,17 +40,18 @@ class Module(object):
 
 class Num(Module):
     @classmethod
-    def keys(cls):
+    def functions(cls):
         return {
-            'round': {'func': cls.round, 'help': r'round a number. Argument: [precision]. Example: {size[k].round[1]}'},
+            'round': {'func': cls.round_func, 'help': r'round a number. Argument: [precision]. Example: {size[k].round[1]}'},
         }
     @staticmethod
     def round_func(_, n, args):
+        n = float(n)
         return round(n, *args) if args else round(n)
 
 class Text(Module):
     @classmethod
-    def keys(cls):
+    def functions(cls):
         return {
             'cap': {'func': cls.cap, 'help': r'capitalize. Example: {name.cap}'},
             'low': {'func': cls.low, 'help': r'lower case. Example: {name.low}'},
@@ -77,7 +78,14 @@ class Text(Module):
         return Module.section(s, args)
     @staticmethod
     def index(_, s, args):
-        return s.find(*args)
+        if not args: raise RuntimeError('missing index function parameter')
+        result = -1
+        for arg in args:
+            result = s.find(str(arg))
+            if result != -1:
+                break
+        return result
+
     @staticmethod
     def cap(_, s, args):
         return Text.change(args, s, str.capitalize)
@@ -102,7 +110,7 @@ class Counter(Module):
     step = 1
 
     @classmethod
-    def keys(cls):
+    def functions(cls):
         return {
             'counter': {'func': cls.counter, 'help': r'counting number. Arguments: [start,step]. Example: {nam}_{counter[100,10]}{ext}'}
         }
@@ -123,7 +131,7 @@ class Counter(Module):
 class FileInfo(Module):
 
     @classmethod
-    def keys(cls):
+    def functions(cls):
         return {
             'name': {'func': cls.name, 'help': 'file name with extension, without path'},
             'path': {'func': cls.path, 'help': 'file path without file name'},
@@ -138,28 +146,37 @@ class FileInfo(Module):
 
     @staticmethod
     def name(_, f, args):
-        return Module.section(os.path.basename(f.path), args)
+        if not isinstance(f, str): f = f.path
+        return Module.section(os.path.basename(f), args)
     @staticmethod
     def abspath(_, f, args):
-        return Module.section(os.path.abspath(os.path.dirname(f.path)), args)
+        if not isinstance(f, str): f = f.path
+        return Module.section(os.path.abspath(os.path.dirname(f)), args)
     @staticmethod
     def path(_, f, args):
-        return Module.section(os.path.dirname(f.path), args)
+        if not isinstance(f, str): f = f.path
+        return Module.section(os.path.dirname(f), args)
     @staticmethod
     def ext(_, f, args):
-        _, ext = os.path.splitext(f.path)
+        if not isinstance(f, str): f = f.path
+        _, ext = os.path.splitext(f)
         return Module.section(ext, args)
     @staticmethod
     def nam(_, f, args):
-        root, _ = os.path.splitext(f.path)
+        if not isinstance(f, str): f = f.path
+        root, _ = os.path.splitext(os.path.basename(f))
         return Module.section(root, args)
 
     @staticmethod
     def size(_, f, args):
-        if isinstance(f, str): raise RuntimeError('method not supported')
-        s = int(f.stat().st_size)
-        if args is None: pass
-        elif args in 'kK': s = s / 1024
+        if isinstance(f, str):
+            s = os.stat(f).st_size
+        else:
+            s = f.stat().st_size
+        if args is None:
+            return s
+        args = args[0]
+        if args in 'kK': s = s / 1024
         elif args in 'mM': s = s / 1024 / 1024
         elif args in 'gG': s = s / 1024 / 1024 / 1024
         elif args in 'tT': s = s / 1024 / 1024 / 1024 / 1024
@@ -184,24 +201,18 @@ class FileInfo(Module):
 
 
 MODULES=[Text, Num, Counter, FileInfo]
-KEYS={}
+FUNCTIONS={}
 
 def update():
     logging.debug('registering modules')
     for m in MODULES:
-        logging.debug('... {0} ({1})'.format(m.__name__, ', '.join(m.keys())))
-        KEYS.update(m.keys())
+        logging.debug('... {0} ({1})'.format(m.__name__, ', '.join(m.functions())))
+        FUNCTIONS.update(m.functions())
 
-def list_keys():
+def list_functions():
     for m in MODULES:
         print('Module {0}:'.format(m.__name__))
-        for k,v in m.keys().items():
+        for k,v in m.functions().items():
             print('\t{0} - {1}'.format(k, v['help']))
         print()
-
-def find_module_not_used(key):
-    for module in MODULES:
-        func = module.get(key, None)
-        if func:
-            return func['func']
 

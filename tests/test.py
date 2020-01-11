@@ -1,12 +1,103 @@
 import unittest
+import os
 import logging
 
 import resorter.resorter
 import resorter.utils
 import resorter.filters
+import resorter.modules
 
 def ask_test(msg, opts, default=None):
     return default
+
+class TestPolish(unittest.TestCase):
+    def test_arithmetics(self):
+            
+        exprs = [
+                ('2+3', [ ['NUMBER', 2], ['NUMBER', 3], ['OP', '+']]),
+                ('2+3*4', [ ['NUMBER', 2], ['NUMBER', 3], ['NUMBER', 4], ['OP', '*'], ['OP', '+']]),
+                ('(2+3)*4', [ ['NUMBER', 2], ['NUMBER', 3], ['OP', '+'],  ['NUMBER', 4], ['OP', '*']]),
+                ('7-(2+3)*4', [ ['NUMBER', 7], ['NUMBER', 2], ['NUMBER', 3], ['OP', '+'],  ['NUMBER', 4], ['OP', '*'], ['OP', '-']]),
+            ]
+        for expr, expected in exprs:
+            tokens = resorter.utils.tokenize(expr, [])
+            polish = resorter.utils.polish(tokens)
+            self.assertEqual(polish, expected)
+
+    def test_func(self):
+        exprs = [
+                ('func', [ ['FUNC', resorter.utils.Func('func')] ]),
+                ('func+2', [
+                    ['FUNC', resorter.utils.Func('func')],
+                    ['NUMBER', 2],
+                    ['OP', '+'],
+                    ]),
+                ('func[3]+2', [
+                    ['NUMBER', 3],
+                    ['ARGS', True],
+                    ['FUNC', resorter.utils.Func('func')],
+                    ['NUMBER', 2],
+                    ['OP', '+'],
+                    ]),
+                ('func+func', [
+                    ['FUNC', resorter.utils.Func('func')],
+                    ['FUNC', resorter.utils.Func('func')],
+                    ['OP', '+'],
+                    ]),
+                ('func.fonc', [
+                    ['FUNC', resorter.utils.Func('func')],
+                    ['FUNC', resorter.utils.Func('fonc')],
+                    ['OP', '.'],
+                    ]),
+                ('func[2+3].fonc', [
+                    ['NUMBER', 2],
+                    ['NUMBER', 3],
+                    ['OP', '+'],
+                    ['ARGS', True],
+                    ['FUNC', resorter.utils.Func('func')],
+                    ['FUNC', resorter.utils.Func('fonc')],
+                    ['OP', '.'],
+                    ]),
+                ('func.fonc[2+3]', [
+                    ['FUNC', resorter.utils.Func('func')],
+                    ['NUMBER', 2],
+                    ['NUMBER', 3],
+                    ['OP', '+'],
+                    ['ARGS', True],
+                    ['FUNC', resorter.utils.Func('fonc')],
+                    ['OP', '.'],
+                    ]),
+                ('func[2+3].fonc[2+3]', [
+                    ['NUMBER', 2],
+                    ['NUMBER', 3],
+                    ['OP', '+'],
+                    ['ARGS', True],
+                    ['FUNC', resorter.utils.Func('func')],
+                    ['NUMBER', 2],
+                    ['NUMBER', 3],
+                    ['OP', '+'],
+                    ['ARGS', True],
+                    ['FUNC', resorter.utils.Func('fonc')],
+                    ['OP', '.'],
+                    ]),
+                ('func[2+3]*fonc[2+3]', [
+                    ['NUMBER', 2],
+                    ['NUMBER', 3],
+                    ['OP', '+'],
+                    ['ARGS', True],
+                    ['FUNC', resorter.utils.Func('func')],
+                    ['NUMBER', 2],
+                    ['NUMBER', 3],
+                    ['OP', '+'],
+                    ['ARGS', True],
+                    ['FUNC', resorter.utils.Func('fonc')],
+                    ['OP', '*'],
+                    ]),
+            ]
+        for expr, expected in exprs:
+            tokens = resorter.utils.tokenize(expr, ['func','fonc'])
+            polish = resorter.utils.polish(tokens)
+            self.assertEqual(expected, polish)
 
 class TestFilterMethods(unittest.TestCase):
     def test_regex(self):
@@ -14,29 +105,85 @@ class TestFilterMethods(unittest.TestCase):
         self.assertTrue(rf('abcd'))
         self.assertFalse(rf('bcd'))
 
-class TestGetFiles(unittest.TestCase):
-    def test_file(self):
-        names = list(map(resorter.utils.PathEntry, [ 'name1', 'name2', 'name3' ]))
-        output = 'dst'
+    def test_empty_filters(self):
         filters = resorter.resorter.get_filters(None, None, None)
         i,n,o = filters
-        self.assertEqual(i[0].__name__, 'true')
-        self.assertEqual(n[0].__name__, 'false')
-        self.assertEqual(o[0].__name__, 'true')
-        expression = '{path}'
-        pairs = list(resorter.resorter.resort(names, filters, expression, output, ask_test))
-        self.assertEqual(len(pairs), 3)
-        for i,o in pairs:
-            print(i,o)
-        self.assertEqual(pairs[0][0].path, names[0].path)
-        self.assertEqual(pairs[1][0].path, names[1].path)
-        self.assertEqual(pairs[2][0].path, names[2].path)
+        self.assertEqual(i[0].name, 'True')
+        self.assertEqual(n[0].name, 'False')
+        self.assertEqual(o[0].name, 'True')
 
-        self.assertEqual(pairs[0][1].path, output+'/name1')
+class TestExpressions(unittest.TestCase):
+    def test_abs_name(self):
+        filters = resorter.resorter.get_filters(None, None, None)
+        name = '/abs/path/name.ext'
+        expressions = [
+                (r'{name}', 'name.ext'),
+                (r'{path}', '/abs/path'),
+                (r'{ext}', '.ext'),
+                (r'{nam}', 'name'),
+                (r'{abspath}', '/abs/path'),
+                ]
+        files = (resorter.utils.read_filenames([name], False))
+        for expr,expected in expressions:
+            for source,dest in resorter.resorter.resort(files, filters, expr, ask_test):
+                self.assertEqual(source, name)
+                self.assertEqual(expected, dest)
+    
+    def test_hidden_name(self):
+        filters = resorter.resorter.get_filters(None, None, None)
+        name = 'rel/path/.name'
+        expressions = [
+                (r'{path}', 'rel/path'),
+                (r'{name}', '.name'),
+                (r'{ext}', ''),
+                (r'{nam}', '.name'),
+                (r'{abspath}', os.path.abspath(os.path.curdir) + '/rel/path'),
+                ]
+        files = list(resorter.utils.read_filenames([name], False))
+        for expr,expected in expressions:
+            for source,dest in resorter.resorter.resort(files, filters, expr, ask_test):
+                self.assertEqual(source, name)
+                self.assertEqual(expected, dest)
 
+    def test_text(self):
+        filters = resorter.resorter.get_filters(None, None, None)
+        name = 'some_PATH string'
+        expressions = [
+                (r'{name}', name),
+                (r'{name.up}', 'SOME_PATH STRING'),
+                (r'{name.low}', 'some_path string'),
+                (r'{name.sub[1,4]}', 'ome'),
+                (r'{name.sub[4]}', '_'),
+                (r'{name.replace[" ","_"]}', 'some_PATH_string'),
+                (r'{name.replace["PATH","xxx"]}', 'some_xxx string'),
+                (r'{name.index["PATH"]}', '5'),
+                ]
+        files = list(resorter.utils.read_filenames([name], False))
+        for expr,expected in expressions:
+            for source,dest in resorter.resorter.resort(files, filters, expr, ask_test):
+                self.assertEqual(source, name)
+                self.assertEqual(expected, dest)
+
+    def test_num(self):
+        filters = resorter.resorter.get_filters(None, None, None)
+        name = 'path/some_42.65_'
+        expressions = [
+                (r'{name.index[4]}', '5'),
+                (r'{name.sub[name.index[4]]}', '4'),
+                (r'{name.sub[5,10].round}', '43'),
+                (r'{name.sub[5,10].round[2]}', '42.65'),
+                (r'{name.sub[5,10]-1.5}', '41.15'),
+                ]
+        files = list(resorter.utils.read_filenames([name], False))
+        for expr,expected in expressions:
+            for source,dest in resorter.resorter.resort(files, filters, expr, ask_test):
+                self.assertEqual(source, name)
+                self.assertEqual(expected, dest)
 
 if __name__=='__main__':
     loglevel = logging.DEBUG
     logging.basicConfig(
         format='%(levelname)s:%(module)s.%(funcName)s: %(message)s', level=loglevel)
     unittest.main()
+
+resorter.modules.update()

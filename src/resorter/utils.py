@@ -2,37 +2,37 @@ import logging
 import re
 import os
 
-def get_from_dir(source, recursive):
-    """return list of input files as DirEntries"""
-    logging.info(f'scanning {source}')
-    with os.scandir(source) as it:
-        for entry in it:
-            if not entry.is_dir():
-                logging.info(f'found {entry.path}')
-                yield entry
-            elif recursive:
-                logging.debug(f'entering directory {entry.path}')
-                yield from get_from_dir(entry.path, recursive)
-            else:
-                logging.info(f'skipping {entry.path}')
-
 class PathEntry(object): # DirEntry alike
     def __init__(self, f):
         self.path = f
+        self.stat = None
     def stat(self):
-        return os.stat(self.path)
+        if self.stat is None:
+            self.stat = os.stat(self.path)
+        return self.stat
 
-def get_from_file(f, recursive):
-    logging.debug(f'reading file names from {f}')
-    for line in f.readlines():
-        line = line.rstrip('\r\n')
-        if len(line) == 0: continue
-        logging.debug(f'found {line}')
-        if os.path.isdir(line):
-            yield from get_from_dir(line, recursive)
-        else:
-            yield PathEntry(line)
-
+def read_filenames(source, recursive):
+    if isinstance(source, str): # dir
+        logging.info(f'scanning directory {source}')
+        with os.scandir(source) as it:
+            for entry in it:
+                if not entry.is_dir():
+                    logging.info(f'found {entry.path}')
+                    yield entry
+                elif recursive:
+                    logging.debug(f'entering directory {entry.path}')
+                    yield from read_filenames(entry.path, recursive)
+                else:
+                    logging.info(f'skipping {entry.path}')
+    else:
+        for line in source:
+            line = line.rstrip('\r\n')
+            if len(line) == 0: continue
+            logging.info(f'found {line}')
+            if os.path.isdir(line):
+                yield from read_filenames(line, recursive)
+            else:
+                yield PathEntry(line)
 
 def tokenize(expr, keywords):
     logging.debug(expr)
@@ -69,11 +69,18 @@ def tokenize(expr, keywords):
 class Func(object):
     def __init__(self, name):
         self.name = name
+    def __str__(self):
+        return self.__repr__()
     def __repr__(self):
         return f'Func({self.name})'
 
+    def __eq__(self, f):
+        return self.name == f.name
+    def __hash__(self):
+        return self.name.__hash__()
+
 def polish(tokens):
-        ops = ['+','-','/','*',r'%','^','.',',']
+        ops = [',','+','-','/','*',r'%','^','.']
         result = []
         ops_q = []
         brackets = { '[': ']', '(': ')' }
@@ -81,21 +88,13 @@ def polish(tokens):
         for kind, value in tokens:
             logging.debug(f'found token {kind}: {value}')
             logging.debug(f'ops queue: {ops_q!r}')
-            if kind == 'OP' and value == '.':
+            if kind == 'OP':
                 while len(ops_q):
                     top = ops_q[-1]
                     if isinstance(top, Func):
                         result.append(['FUNC', ops_q.pop()])
-                    else:
-                        break
-                result.append([kind, value])
-            elif kind == 'OP':
-                while len(ops_q):
-                    top = ops_q[-1]
-                    if top in ops and ops.index(top) >= ops.index(value):
+                    elif top in ops and ops.index(top) >= ops.index(value):
                         result.append(['OP', ops_q.pop()])
-                    elif isinstance(top, Func):
-                        result.append(['FUNC', ops_q.pop()])
                     else:
                         break
                 ops_q.append(value)

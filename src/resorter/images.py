@@ -10,7 +10,7 @@ import resorter.modules as modules
 class Exif(modules.Module):
 
     @classmethod
-    def keys(cls):
+    def functions(cls):
         return {
             'exif_camera': {'func': cls.camera, 'help': r''},
             'exif_flash': {'func': cls.flash, 'help': r''},
@@ -32,8 +32,8 @@ class Exif(modules.Module):
         return image.get(s) if image.has_exif else None
 
     @staticmethod
-    def coo(key, f, args):
-        d,m,s = Exif.get(f, 'gps_'+key.lstrip('exif_'))
+    def coo(func, f, args):
+        d,m,s = Exif.get(f, 'gps_'+func.lstrip('exif_'))
         return d + m/60 + s/3600
 
     @staticmethod

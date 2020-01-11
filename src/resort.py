@@ -21,10 +21,10 @@ def parse_args():
     parser = argparse.ArgumentParser(description='File organizer', prog='resorter', fromfile_prefix_chars='@', epilog=examples)
     actions = resorter.actions.ACTIONS
 
-    parser.add_argument('action',
+    parser.add_argument('-a', '--action', dest='action', default='copy', required=False,
                         help='action to be executed over input files ({0})'.format(', '.join(actions.keys())))
-    parser.add_argument('expression',
-                        help='specify the expression to format the destination or a single line @file name')
+    parser.add_argument('-e', '--expression', dest='expr', default='./{name}', required=False,
+                        help='specify the expression to format the destination or a @file name')
 
     parser.add_argument('-f', '--from', dest='input', nargs='?', default=sys.stdin,
                         help='read file names from a directory, a file. Default: stdin')
@@ -46,11 +46,11 @@ def parse_args():
                         const=True, default=False,
                         help='print debug messages')
 
-    parser.add_argument('--list-keys', dest='list_keys', action='store_const',
+    parser.add_argument('--list-functions', dest='list_functions', action='store_const',
                         const=True, default=False,
-                        help='list available keys')
+                        help='list available functions')
 
-    parser.add_argument('-a', '--ask', dest='ask', action='store_const',
+    parser.add_argument('-c', '--ask', dest='ask', action='store_const',
                         const=True, default=False,
                         help='ask confirmation on each file')
     parser.add_argument('-p', '--stop', dest='stop', action='store_const',
@@ -94,22 +94,20 @@ def main():
         format='%(levelname)s:%(module)s.%(funcName)s: %(message)s', level=loglevel)
     
     resorter.modules.update()
-    if args.list_keys:
-        resorter.modules.list_keys()
+
+    if args.list_functions:
+        resorter.modules.list_functions()
         return
 
     filters = resorter.resorter.get_filters(args.ifilter, args.nifilter, args.ofilter)
     
-    if isinstance(args.input, str):
-        if os.path.isdir(args.input):
-            files = resorter.utils.get_from_dir(args.input, args.recursive)
-        else:
-            files = resorter.utils.get_from_file(open(args.input, 'r'), args.recursive)
+    if isinstance(args.input, str) and not os.path.isdir(args.input):
+        files = resorter.utils.read_filenames(open(args.input, 'r'), args.recursive)
     else:
-        files = resorter.utils.get_from_file(args.input, args.recursive)
+        files = resorter.utils.read_filenames(args.input, args.recursive)
 
-    expression = args.expression
-    if args.expression.startswith('@'):
+    expression = args.expr
+    if expression.startswith('@'):
         with open(expression.lstrip('@'), 'r') as f:
             expression = ''.join(f.readlines())
 

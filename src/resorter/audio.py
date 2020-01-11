@@ -9,25 +9,25 @@ import resorter.modules as modules
 class Id3(modules.Module):
 
     @classmethod
-    def keys(cls):
+    def functions(cls):
         return {
-            'id3-composer': {'func': cls.tag, 'help': r'composer'},
-            'id3-title': {'func': cls.tag, 'help': r'title'},
-            'id3-album': {'func': cls.tag, 'help': r'album'},
-            'id3-artist': {'func': cls.tag, 'help': r'artist'},
-            'id3-genre': {'func': cls.tag, 'help': r'genre'},
-            'id3-disc': {'func': cls.tag, 'help': r'disc'},
-            'id3-track': {'func': cls.tag, 'help': r'track'},
+            'id3_composer': {'func': cls.tag, 'help': r'composer'},
+            'id3_title': {'func': cls.tag, 'help': r'title'},
+            'id3_album': {'func': cls.tag, 'help': r'album'},
+            'id3_artist': {'func': cls.tag, 'help': r'artist'},
+            'id3_genre': {'func': cls.tag, 'help': r'genre'},
+            'id3_disc': {'func': cls.tag, 'help': r'disc'},
+            'id3_track': {'func': cls.tag, 'help': r'track'},
         }
     
     @classmethod
-    def open(cls, f):
-        return stagger.read_tag(f.path)
+    def open(cls, source):
+        return stagger.read_tag(source.path)
     
     @staticmethod
-    def tag(key, f, args):
-        id3 = Id3.cache(f)
-        return id3.__getattribute__(key.lstrip('id3-'))
+    def tag(func, source, args):
+        id3 = Id3.cache(source)
+        return id3.__getattribute__(func.lstrip('id3_'))
 
 if OK:
     modules.MODULES.append(Id3)

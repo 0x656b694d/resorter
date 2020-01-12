@@ -12,7 +12,8 @@ class Exif(modules.Module):
     @classmethod
     def functions(cls):
         return {
-            'exif_camera': {'func': cls.camera, 'help': r''},
+            'exif_make': {'func': cls.camera, 'help': r''},
+            'exif_model': {'func': cls.camera, 'help': r''},
             'exif_flash': {'func': cls.flash, 'help': r''},
             'exif_software': {'func': cls.software, 'help': r''},
             'exif_time': {'func': cls.time, 'help': r''},
@@ -23,17 +24,22 @@ class Exif(modules.Module):
 
     @classmethod
     def open(cls, f):
-        with open(f, 'rb') as fd:
-            return exif.Image(fd)
+        try:
+            with open(f, 'rb') as fd:
+                return exif.Image(fd)
+        except:
+            return None
     
     @staticmethod
     def get(f, s):
         image = Exif.cache(f)
-        return image.get(s) if image.has_exif else None
+        return image.get(s) if image and image.has_exif else None
 
     @staticmethod
     def coo(func, f, args):
-        d,m,s = Exif.get(f, 'gps_'+func.lstrip('exif_'))
+        e = Exif.get(f, 'gps_'+func.lstrip('exif_'))
+        if not e: return 'NoGPS'
+        d,m,s = e
         return d + m/60 + s/3600
 
     @staticmethod
@@ -41,8 +47,10 @@ class Exif(modules.Module):
         return Exif.get(f, 'gps_altitude')
 
     @staticmethod
-    def camera(_, f, args):
-        return Exif.get(f, 'camera') or 'UnknownCamera'
+    def camera(key, f, args):
+        key = key[len('exif_'):]
+        value = Exif.get(f, key)
+        return value.strip() if value else 'Unknown'+key.capitalize()
 
     @staticmethod
     def software(_, f, args):

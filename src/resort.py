@@ -16,7 +16,7 @@ import resorter.media
 
 def parse_args():
     examples = """
-    Example: %(prog)s -f photos archive/
+    Example: %(prog)s -f photos -a copy -e {exif_camera}/{name}
     """
     parser = argparse.ArgumentParser(description='File organizer', prog='resorter', fromfile_prefix_chars='@', epilog=examples)
     actions = resorter.actions.ACTIONS
@@ -46,10 +46,6 @@ def parse_args():
                         const=True, default=False,
                         help='print debug messages')
 
-    parser.add_argument('--list-functions', dest='list_functions', action='store_const',
-                        const=True, default=False,
-                        help='list available functions')
-
     parser.add_argument('-c', '--ask', dest='ask', action='store_const',
                         const=True, default=False,
                         help='ask confirmation on each file')
@@ -68,6 +64,10 @@ def parse_args():
                         help='don\'t perform actions, only print')
 
     parser.add_argument('--version', action='version', version='%(prog)s '+resorter.resorter.VERSION)
+    parser.add_argument('--list-functions', dest='list_functions', action='store_const',
+                        const=True, default=False,
+                        help='list available functions to use in EXPR')
+
     return parser.parse_args()
 
 def ask_cli(msg, opts, default=None):
@@ -116,9 +116,7 @@ def main():
     action = resorter.actions.ACTIONS[args.action]['func']
     for s, d in pairs:
         try:
-            logging.debug('%srunning %s over %s to %s', 'dry ' if args.dry_run else '', args.action, s, d)
-            if not args.silent:
-                print('...{0}{1} {2} -> {3}'.format('dry ' if args.dry_run else '', args.action, s, d))
+            logging.debug(f'%srunning {args.action} over {s} to {d}', 'dry ' if args.dry_run else '')
             if args.ask:
                 options = {'Confirm': 'cCyY', 'Ignore': 'iInN', 'Quit': 'qQxX'}
                 answer = ask_cli('{0}: {1} -> {2}\n'.format(args.action, s, d), options , 'c')
@@ -126,21 +124,24 @@ def main():
                     continue
                 elif answer in options['Quit']:
                     break
+            elif not args.silent:
+                print('... {0}{1} {2} -> {3}'.format('dry ' if args.dry_run else '', args.action, s, d))
             action(s, d, args.dry_run)
         except Exception as e:
             if args.ignore:
                 logging.debug('Ignoring exception: %s', e)
             else:
-                logging.warning('Exception: %s', e)
+                logging.error('Exception: %s', e)
                 if args.stop:
                     break
-                if ask_cli('Could not {0} from {1} to {2}: {3}'
-                    .format(args.action, s, d, e),
+                if ask_cli(f'Could not {args.action} from {s} to {d}: {e!r}',
                     {'Quit': 'qQ', 'Ignore': 'iI'}, 'i') in 'qQ':
                     break
+    return 0
 
 try:
-    main()
+    exit(main())
 except KeyboardInterrupt:
     logging.warning('Keyboard interrupt')
+    exit(-1)
 

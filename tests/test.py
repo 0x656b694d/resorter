@@ -18,6 +18,8 @@ class TestPolish(unittest.TestCase):
                 ('2+3*4', [ ['NUMBER', 2], ['NUMBER', 3], ['NUMBER', 4], ['OP', '*'], ['OP', '+']]),
                 ('(2+3)*4', [ ['NUMBER', 2], ['NUMBER', 3], ['OP', '+'],  ['NUMBER', 4], ['OP', '*']]),
                 ('7-(2+3)*4', [ ['NUMBER', 7], ['NUMBER', 2], ['NUMBER', 3], ['OP', '+'],  ['NUMBER', 4], ['OP', '*'], ['OP', '-']]),
+                ('-1', [ ['NUMBER', 1], ['OP', '--'] ]),
+                ('2*(-1)', [ ['NUMBER', 2], ['NUMBER', 1], ['OP', '--'], ['OP', '*']]),
             ]
         for expr, expected in exprs:
             tokens = resorter.utils.tokenize(expr, [])
@@ -195,6 +197,8 @@ class TestExpressions(unittest.TestCase):
                 (r'{name}', name),
                 (r'{name.up}', 'SOME_PATH STRING'),
                 (r'{name.low}', 'some_path string'),
+                (r'{name.cap}', 'Some_path string'),
+                (r'{name.title}', 'Some_Path String'),
                 (r'{name.sub[1,4]}', 'ome'),
                 (r'{name.sub[4]}', '_'),
                 (r'{name.replace[" ","_"]}', 'some_PATH_string'),
@@ -220,6 +224,7 @@ class TestExpressions(unittest.TestCase):
                 (r'{(name[5,10].round-1)/6}', '7.0'),
                 (r'{(name[5,10].round-1)/6^2}', '49.0'),
                 (r'{2^3}', '8'),
+                (r'{-2^3}', '-8'),
                 ]
         files = list(resorter.utils.read_filenames([name], False))
         for expr,expected in expressions:

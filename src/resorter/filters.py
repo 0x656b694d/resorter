@@ -57,6 +57,8 @@ class ExpressionFilter(Filter):
         value = type(self.value)(value)
         if self.op in '==':
             return value == self.value
+        if self.op in [ '!=', '<>']:
+            return value != self.value
         if self.op == '>=':
             return value >= self.value
         if self.op == '<=':

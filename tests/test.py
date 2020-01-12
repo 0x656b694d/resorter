@@ -20,6 +20,17 @@ class TestPolish(unittest.TestCase):
                 ('7-(2+3)*4', [ ['NUMBER', 7], ['NUMBER', 2], ['NUMBER', 3], ['OP', '+'],  ['NUMBER', 4], ['OP', '*'], ['OP', '-']]),
                 ('-1', [ ['NUMBER', 1], ['OP', '--'] ]),
                 ('2*(-1)', [ ['NUMBER', 2], ['NUMBER', 1], ['OP', '--'], ['OP', '*']]),
+                ('2|5', [ ['NUMBER', 2], ['NUMBER', 5], ['OP', '|']]),
+                ('2&5', [ ['NUMBER', 2], ['NUMBER', 5], ['OP', '&']]),
+                ('2>5', [ ['NUMBER', 2], ['NUMBER', 5], ['OP', '>']]),
+                ('2<5', [ ['NUMBER', 2], ['NUMBER', 5], ['OP', '<']]),
+                ('2=5', [ ['NUMBER', 2], ['NUMBER', 5], ['OP', '=']]),
+                ('2==5', [ ['NUMBER', 2], ['NUMBER', 5], ['OP', '==']]),
+                ('2!=5', [ ['NUMBER', 2], ['NUMBER', 5], ['OP', '!=']]),
+                ('2<>5', [ ['NUMBER', 2], ['NUMBER', 5], ['OP', '<>']]),
+                ('2>=5', [ ['NUMBER', 2], ['NUMBER', 5], ['OP', '>=']]),
+                ('2<=5', [ ['NUMBER', 2], ['NUMBER', 5], ['OP', '<=']]),
+                ('(func.fanc==15)||(68>fanc)', [ ['ID', 'func'], ['ID', 'fanc'], ['OP', '.'], ['NUMBER', 15], ['OP', '=='], ['NUMBER', 68], ['ID', 'fanc'], ['OP', '>'], ['OP', '||']]),
             ]
         for expr, expected in exprs:
             tokens = resorter.utils.tokenize(expr, [])
@@ -220,9 +231,12 @@ class TestExpressions(unittest.TestCase):
                 (r'{name.sub[5,10].round}', '43'),
                 (r'{name.sub[5,10].round[2]}', '42.65'),
                 (r'{name.sub[5,10]-1.5}', '41.15'),
+                (r'{name.sub[5,10]+1.5}', '44.15'),
                 (r'{(name[5,10].round-1)%4}', '2'),
                 (r'{(name[5,10].round-1)/6}', '7.0'),
                 (r'{(name[5,10].round-1)/6^2}', '49.0'),
+                (r'{name[0,4]+path}', 'somepath'),
+                (r'{name[5,7].num+name[8,10]}', '107'),
                 (r'{2^3}', '8'),
                 (r'{-2^3}', '-8'),
                 ]
@@ -230,6 +244,41 @@ class TestExpressions(unittest.TestCase):
         for expr,expected in expressions:
             for source,dest in resorter.resorter.resort(files, filters, expr, ask_test):
                 self.assertEqual(source, name)
+                self.assertEqual(expected, dest)
+
+    def test_conditions(self):
+        filters = resorter.resorter.get_filters(None, None, None)
+        name = 'Hello'
+        expressions = [
+                (r'{name.in("Goodbye","Hello","Hi")}', 'True'),
+                (r'{name.in("Goodbye","Hi")}', 'False'),
+                (r'{if(name=="Hello", 12, 14)}', '12'),
+                (r'{if(name~="H.l+o", 12, 14)}', '12'),
+                (r'{if(name=="Hlo", 12, 14)}', '14'),
+                ]
+        files = list(resorter.utils.read_filenames([name], False))
+        for expr,expected in expressions:
+            for source,dest in resorter.resorter.resort(files, filters, expr, ask_test):
+                self.assertEqual(source, name)
+                self.assertEqual(expected, dest)
+
+    def test_comp(self):
+        filters = resorter.resorter.get_filters(None, None, None)
+        expressions = [
+                (r'{2=3}', 'False'),
+                (r'{2=2}', 'True'),
+                (r'{2<>2}', 'False'),
+                (r'{2!=4}', 'True'),
+                (r'{2>=2}', 'True'),
+                (r'{2>=1}', 'True'),
+                (r'{2<=2}', 'True'),
+                (r'{2<=3}', 'True'),
+                (r'{2>1}', 'True'),
+                (r'{2<1}', 'False'),
+                ]
+        files = list(resorter.utils.read_filenames(['name'], False))
+        for expr,expected in expressions:
+            for source,dest in resorter.resorter.resort(files, filters, expr, ask_test):
                 self.assertEqual(expected, dest)
 
 if __name__=='__main__':

@@ -39,11 +39,11 @@ def tokenize(expr, keywords):
 
     token_spec = [
             ('NUMBER',   r'\d+(\.\d*)?'),  # Integer or decimal number
-            ('STRING',   r"'[^']*'"),
-            ('STRING2',  r'"[^"]*"'),
+            ('STRING',   r"'[^']*'"),      # 'Strings'
+            ('STRING2',  r'"[^"]*"'),      # "Strings"
             ('ID',       r'[A-Za-z_]+'),   # Identifiers
-            ('OP',       r'[+\-*/\^.,%]'),  # Arithmetic operators
-            ('BRACKETS', r'[\(\)\[\]]'),   # Brackets
+            ('OP',       r'[+\-*/\^.,%]|\|\||&&|\||&|==?|<=|>=|<>|[<>]|!=|~='), # Arithmetic operators
+            ('BRACKETS', r'[\(\)\[\]{}]'),   # Brackets
             ('SKIP',     r'[ \t]+'),       # Skip over spaces and tabs
             ('MISMATCH', r'.'),            # Any other character
         ]
@@ -79,11 +79,14 @@ class Func(object):
     def __hash__(self):
         return self.name.__hash__()
 
+LOGIC = ['||', '&&']
+COMP = ['=', '>', '<', '==', '>=', '<=', '!=', '<>', '~=']
+OPS = [','] + LOGIC + COMP + ['+','-','|','--','^','/','*','&','%','.']
+BRACKETS = { '[': ']', '(': ')', '{': '}'}
+
 def polish(tokens):
-        ops = [',','+','-','--','^','/','*','%','.']
         result = []
         ops_q = []
-        brackets = { '[': ']', '(': ')' }
         logging.debug('Polishing')
         def pops(op):
             if isinstance(op, Func):
@@ -97,7 +100,7 @@ def polish(tokens):
             logging.debug(f'found token {kind}: {value}')
             logging.debug(f'ops queue: {ops_q!r}')
             if kind == 'OP':
-                if value == '-' and (prev[0] in [None, 'OP'] or prev[1] in brackets.keys()):
+                if value == '-' and (prev[0] in [None, 'OP'] or prev[1] in BRACKETS.keys()):
                     logging.debug(f'unary minus because {prev}')
                     value = '--'
                 while len(ops_q):
@@ -106,7 +109,7 @@ def polish(tokens):
                         result.append(['FUNC', ops_q.pop()])
                     elif top == 'ARGS':
                         result.append([ops_q.pop(), None])
-                    elif top in ops and ops.index(top) >= ops.index(value):
+                    elif top in OPS and OPS.index(top) >= OPS.index(value):
                         result.append(['OP', ops_q.pop()])
                     else:
                         break
@@ -114,15 +117,15 @@ def polish(tokens):
             elif kind == 'FUNC':
                 ops_q.append(Func(value))
             elif kind == 'BRACKETS':
-                if value in brackets.keys():
+                if value in BRACKETS.keys():
                     if len(ops_q) and isinstance(ops_q[-1], Func):
                         ops_q.append('ARGS')
                     ops_q.append(value)
-                if value in brackets.values():
+                if value in BRACKETS.values():
                     while len(ops_q):
                         v = ops_q.pop()
-                        if v in brackets.keys():
-                            if brackets[v] == value:
+                        if v in BRACKETS.keys():
+                            if BRACKETS[v] == value:
                                 break
                             else:
                                 raise RuntimeError(f'Bracket {v!r} mismatch')
@@ -139,7 +142,7 @@ def polish(tokens):
 class Expression(object):
     def __init__(self, expr, keywords):
         self.keywords = keywords
-        tokens = tokenize(expr.strip('{}'), keywords.keys())
+        tokens = tokenize(expr, keywords.keys())
         self.polish = polish(tokens)
         # Translate ID to module function
         for kv in self.polish:
@@ -184,18 +187,55 @@ class Expression(object):
                     v = callf(a, source)
                     v = callf(b, v)
                     result.append(v)
-                else:
+                elif value in LOGIC:
                     a = callf(a, source)
                     b = callf(b, source)
- 
+                    if value == '||':
+                        result.append(a or b)
+                    if value == '&&':
+                        result.append(a and b)
+                elif value in COMP:
+                    a = callf(a, source)
+                    b = callf(b, source)
+                    if value == '<':
+                        result.append(a < b)
+                    elif value == '>':
+                        result.append(a > b)
+                    elif value in ('=', '=='):
+                        result.append(a == b)
+                    elif value in ('!=', '<>'):
+                        result.append(a != b)
+                    elif value == '>=':
+                        result.append(a >= b)
+                    elif value == '<=':
+                        result.append(a <= b)
+                    elif value == '~=':
+                        a = str(a)
+                        b = str(a)
+                        result.append(True if re.fullmatch(b, a) else False)
+
+                elif value == '+':
+                    a = callf(a, source)
+                    b = callf(b, source)
+                    if type(a) != type(b):
+                        if type(a) not in [int, float]:
+                            a = str(a)
+                            a = (float if '.' in a else int)(a)
+                        if type(b) not in [int, float]:
+                            b = str(b)
+                            b = (float if '.' in b else int)(b)
+
+                    result.append(a + b)
+                else: # numeric
+                    a = callf(a, source)
+                    b = callf(b, source)
+
                     if type(a) not in [int, float]:
                         a = str(a)
                         a = (float if '.' in a else int)(a)
                     if type(b) not in [int, float]:
                         b = str(b)
                         b = (float if '.' in b else int)(b)
-                    if value == '+':
-                        result.append(a+b)
                     elif value == '-':
                         result.append(a-b)
                     elif value == '*':
@@ -206,6 +246,11 @@ class Expression(object):
                         result.append(a%b)
                     elif value == '^':
                         result.append(a**b)
+                    elif value == '|':
+                        result.append(a | b)
+                    elif value == '&':
+                        result.append(a & b)
+
             elif kind == 'ARGS':
                 result.append(Args())
             elif kind == 'FUNC':
@@ -229,8 +274,8 @@ class Expression(object):
 def split(s, sep, keywords=[]):
     result = []
     word = []
-    open_brackets = r'{[('
-    close_brackets = r'}])'
+    open_brackets = ''.join(BRACKETS.keys())
+    close_brackets = ''.join(BRACKETS.values())
     brackets = []
     for ch in s:
         if ch in sep and not len(brackets):

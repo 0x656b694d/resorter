@@ -43,11 +43,43 @@ class Num(Module):
     def functions(cls):
         return {
             'round': {'func': cls.round_func, 'help': r'round a number. Argument: [precision]. Example: {size[k].round[1]}'},
+            'num': {'func': cls.number, 'help': r'convert string to an number'},
         }
     @staticmethod
     def round_func(_, n, args):
         n = float(n)
         return round(n, *args) if args else round(n)
+    @staticmethod
+    def number(_, source, args):
+        n = (float if '.' in source else int)(source)
+        return round(n, *args) if args else n
+
+class Conditions(Module):
+    @classmethod
+    def functions(cls):
+        return {
+                'if': {'func': cls.eef, 'help': r'if-else condition. Arguments: [condition, true value, false value]. Example: {if(size>1000,"big","small")}'},
+                'any': {'func': cls.aany, 'help': r'true if any of arguments is true. Arguments: [conditions*]'},
+                'all': {'func': cls.aall, 'help': r'true if all of arguments are true. Arguments: [conditions*]'},
+                'in': {'func': cls.een, 'help': r'check agains a list of options. Arguments: [options]. Example: {if(exif_make.in("Canon","Nikon"),"Known", "Unknown")}'},
+        }
+
+    @staticmethod
+    def eef(_, s, args):
+        if not args or len(args) not in [1,2,3]:
+            raise RuntimeError('function arguments mismatch: ' + Conditions.functions['if'].help)
+        if isinstance(s, bool):
+            return args[0] if s else args[1] if len(args) == 2 else ''
+        return args[1] if args[0] else args[2] if len(args) == 3 else ''
+    @staticmethod
+    def aany(_, s, args):
+        return any(args)
+    @staticmethod
+    def aall(_, s, args):
+        return all(args)
+    @staticmethod
+    def een(_, s, args):
+        return s in args
 
 class Text(Module):
     @classmethod
@@ -200,7 +232,7 @@ class FileInfo(Module):
         return time.strftime('%d-%b-%Y.%H%M%S' if args is None else args, t)
 
 
-MODULES=[Text, Num, Counter, FileInfo]
+MODULES=[Text, Num, Counter, FileInfo, Conditions]
 FUNCTIONS={}
 
 def update():

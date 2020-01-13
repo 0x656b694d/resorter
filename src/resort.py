@@ -30,11 +30,11 @@ def parse_args():
                         help='read file names from a directory, a file. Default: stdin')
 
     parser.add_argument('-if', '--ifilter', metavar='EXPR', dest='ifilter', action='append',
-                        help=r'regular or {module} expression for the input files to be included')
+                        help=r'expression for the input files to be included')
     parser.add_argument('-nif', '--nifilter', metavar='EXPR', dest='nifilter', action='append',
-                        help=r'regular or {module} expression for the input files to be excluded')
+                        help=r'expression for the input files to be excluded')
     parser.add_argument('-of', '--ofilter', metavar='EXPR', dest='ofilter', action='append',
-                        help=r'regular or {module} expression for the output files to be excluded')
+                        help=r'expression for the output files to be excluded')
 
     parser.add_argument('-s', '--silent', dest='silent', action='store_const',
                         const=True, default=False,

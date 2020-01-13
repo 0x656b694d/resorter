@@ -25,46 +25,12 @@ class FalseFilter(Filter):
     def onStr(self, _):
         return False
 
-class RegexFilter(Filter):
-
-    def __init__(self, e):
-        self.regex = re.compile(e)
-        self.name = 'RegexFilter'
-
-    def onStr(self, f):
-        return self.regex.fullmatch(f) is not None
-
 class ExpressionFilter(Filter):
     def __init__(self, e, keywords):
-        self.polish, value = utils.split(e, '', keywords)
-        op = ''
-        for ch in value:
-            if ch in '=<>~':
-                op += ch
-            else: break
-        self.op = op
-        self.value = value[len(op):]
-        if op == '~':
-            self.value = re.compile(self.value)
-
+        self.expr = utils.Expression(e, keywords)
         self.name = 'ExpressionFilter'
 
     def onEntry(self, source):
-        value = self.polish.calc(source)
-        logging.debug('value %s', value)
-        if self.op == '~':
-            return self.value.fullmatch(value)
-        value = type(self.value)(value)
-        if self.op in '==':
-            return value == self.value
-        if self.op in [ '!=', '<>']:
-            return value != self.value
-        if self.op == '>=':
-            return value >= self.value
-        if self.op == '<=':
-            return value <= self.value
-        if self.op == '>':
-            return value > self.value
-        if self.op == '<':
-            return value < self.value
+        logging.debug(f'{source}')
+        return self.expr.calc(source)
 

@@ -62,6 +62,7 @@ class Conditions(Module):
                 'any': {'func': cls.aany, 'help': r'true if any of arguments is true. Arguments: [conditions*]'},
                 'all': {'func': cls.aall, 'help': r'true if all of arguments are true. Arguments: [conditions*]'},
                 'in': {'func': cls.een, 'help': r'check agains a list of options. Arguments: [options]. Example: {if(exif_make.in("Canon","Nikon"),"Known", "Unknown")}'},
+                'not': {'func': cls.noot, 'help': r'negation. Arguments: [condition]. Example: {if(not(exif_make.in("Canon","Nikon")),"Known", "Unknown")}'},
         }
 
     @staticmethod
@@ -73,13 +74,16 @@ class Conditions(Module):
         return args[1] if args[0] else args[2] if len(args) == 3 else ''
     @staticmethod
     def aany(_, s, args):
-        return any(args)
+        return any(args or s)
     @staticmethod
     def aall(_, s, args):
-        return all(args)
+        return all(args or s)
     @staticmethod
     def een(_, s, args):
         return s in args
+    @staticmethod
+    def noot(_, s, args):
+        return not (args[0] if args else s)
 
 class Text(Module):
     @classmethod

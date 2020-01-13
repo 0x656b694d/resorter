@@ -29,7 +29,7 @@ def process(files, expression, ask):
 def get_filters(i, n, o):
 
     def add(ff, d):
-        return [filters.ExpressionFilter(f, modules.FUNCTIONS) if f.startswith('{') else filters.RegexFilter(f) for f in ff] if ff else [d]
+        return [filters.ExpressionFilter(f, modules.FUNCTIONS) for f in ff] if ff else [d]
 
     return (add(i, filters.TrueFilter()), add(n, filters.FalseFilter()), add(o, filters.TrueFilter()))
 

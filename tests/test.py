@@ -156,10 +156,6 @@ class TestPolish(unittest.TestCase):
             self.assertEqual(expected, polish)
 
 class TestFilterMethods(unittest.TestCase):
-    def test_regex(self):
-        rf = resorter.filters.RegexFilter(r'abc.*')
-        self.assertTrue(rf('abcd'))
-        self.assertFalse(rf('bcd'))
 
     def test_empty_filters(self):
         filters = resorter.resorter.get_filters(None, None, None)
@@ -167,6 +163,19 @@ class TestFilterMethods(unittest.TestCase):
         self.assertEqual(i[0].name, 'True')
         self.assertEqual(n[0].name, 'False')
         self.assertEqual(o[0].name, 'True')
+
+    def test_input_filter(self):
+        filters = resorter.resorter.get_filters(['name=="abc"'], ['path==name'], None)
+        i, n, o = filters
+        self.assertEqual(i[0].name, 'ExpressionFilter')
+        self.assertEqual(n[0].name, 'ExpressionFilter')
+        self.assertEqual(o[0].name, 'True')
+
+        self.assertFalse(i[0](resorter.utils.PathEntry("abcd")))
+        self.assertTrue(i[0](resorter.utils.PathEntry("abc")))
+
+        self.assertFalse(n[0](resorter.utils.PathEntry("path/abc")))
+        self.assertTrue(n[0](resorter.utils.PathEntry("abc/abc")))
 
 class TestExpressions(unittest.TestCase):
     def test_abs_name(self):
@@ -252,6 +261,9 @@ class TestExpressions(unittest.TestCase):
         expressions = [
                 (r'{name.in("Goodbye","Hello","Hi")}', 'True'),
                 (r'{name.in("Goodbye","Hi")}', 'False'),
+                (r'{all("Goodbye",name=="Hello")}', 'True'),
+                (r'{any("Goodbye",name=="xx")}', 'True'),
+                (r'{not(name=="xx")}', 'True'),
                 (r'{if(name=="Hello", 12, 14)}', '12'),
                 (r'{if(name~="H.l+o", 12, 14)}', '12'),
                 (r'{if(name=="Hlo", 12, 14)}', '14'),

@@ -173,6 +173,8 @@ class Expression(object):
                     a = str(a)
                     a = (float if '.' in a else int)(a)
                 result.append(-a)
+            elif kind == 'OP' and len(result) < 2:
+                result.append(value)
             elif kind == 'OP':
                 b = result.pop()
                 a = result.pop()
@@ -214,6 +216,19 @@ class Expression(object):
                         b = str(a)
                         result.append(True if re.fullmatch(b, a) else False)
 
+                elif value in '/\\':
+                    a = callf(a, source)
+                    b = callf(b, source)
+                    if type(a) == type(b) and type(a) == str:
+                        result.append(a+os.sep+b)
+                    else:
+                        if type(a) not in [int, float]:
+                            a = str(a)
+                            a = (float if '.' in a else int)(a)
+                        if type(b) not in [int, float]:
+                            b = str(b)
+                            b = (float if '.' in b else int)(b)
+                        result.append(a / b)
                 elif value == '+':
                     a = callf(a, source)
                     b = callf(b, source)
@@ -240,8 +255,6 @@ class Expression(object):
                         result.append(a-b)
                     elif value == '*':
                         result.append(a*b)
-                    elif value == '/':
-                        result.append(a/b)
                     elif value == '%':
                         result.append(a%b)
                     elif value == '^':
@@ -270,39 +283,4 @@ class Expression(object):
 
         logging.debug(f'computed {result!r}')
         return result
-
-def split(s, sep, keywords=[]):
-    result = []
-    word = []
-    open_brackets = ''.join(BRACKETS.keys())
-    close_brackets = ''.join(BRACKETS.values())
-    brackets = []
-    for ch in s:
-        if ch in sep and not len(brackets):
-            if len(word):
-                result.append(''.join(word))
-                word = []
-            result.append(ch)
-            continue
-        if ch in open_brackets:
-            brackets.append(ch)
-            if ch == '{' and len(word):
-                result.append(''.join(word))
-                word = []
-            word.append(ch)
-        elif ch in close_brackets:
-            b = brackets.pop()
-            if open_brackets.find(b) != close_brackets.find(ch):
-                raise RuntimeError(f'Unmatched bracket {ch} in {s}')
-            word.append(ch)
-            if ch == '}':
-                result.append(Expression(''.join(word), keywords))
-                word = []
-        else:
-            word.append(ch)
-    if len(word):
-        result.append(''.join(word))
-    if len(brackets):
-        raise RuntimeError(f'Unmatched brackets {brackets!r} in {s}')
-    return result
 

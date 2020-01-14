@@ -27,11 +27,15 @@ def action_move(source, dst, dry=False):
 
 def action_check(source, dst, dry=False):
     if source != dst:
-        print('{0} <> {1}'.format(source, dst))
+        print(f'{source} <> {dst}')
+
+def action_filter(source, dst, dry=False):
+    print(f'{source}')
 
 
 ACTIONS = {
         'copy':  {'func': action_copy,  'help':'copy input file to the computed location'},
         'move':  {'func': action_move,  'help':'move file file to the computed location'},
-        'check': {'func': action_check, 'help':'check if the source and destination paths are equal'}
+        'check': {'func': action_check, 'help':'check if the source and destination paths are equal'},
+        'filter': {'func': action_filter, 'help':'print the source paths only'}
         }

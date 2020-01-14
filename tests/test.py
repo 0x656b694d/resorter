@@ -2,9 +2,7 @@ import unittest
 import os
 import logging
 
-import resorter.resorter
 import resorter.utils
-import resorter.filters
 import resorter.modules
 
 def ask_test(msg, opts, default=None):
@@ -155,31 +153,14 @@ class TestPolish(unittest.TestCase):
             polish = resorter.utils.polish(tokens)
             self.assertEqual(expected, polish)
 
-class TestFilterMethods(unittest.TestCase):
-
-    def test_empty_filters(self):
-        filters = resorter.resorter.get_filters(None, None, None)
-        i,n,o = filters
-        self.assertEqual(i[0].name, 'True')
-        self.assertEqual(n[0].name, 'False')
-        self.assertEqual(o[0].name, 'True')
-
-    def test_input_filter(self):
-        filters = resorter.resorter.get_filters(['name=="abc"'], ['path==name'], None)
-        i, n, o = filters
-        self.assertEqual(i[0].name, 'ExpressionFilter')
-        self.assertEqual(n[0].name, 'ExpressionFilter')
-        self.assertEqual(o[0].name, 'True')
-
-        self.assertFalse(i[0](resorter.utils.PathEntry("abcd")))
-        self.assertTrue(i[0](resorter.utils.PathEntry("abc")))
-
-        self.assertFalse(n[0](resorter.utils.PathEntry("path/abc")))
-        self.assertTrue(n[0](resorter.utils.PathEntry("abc/abc")))
+def process(files, expr, ask):
+    expr = resorter.utils.Expression(expr, resorter.modules.FUNCTIONS)
+    for source in files:
+        yield (source.path, str(expr.calc(source)))
+    return True
 
 class TestExpressions(unittest.TestCase):
     def test_abs_name(self):
-        filters = resorter.resorter.get_filters(None, None, None)
         name = '/abs/path/name.ext'
         expressions = [
                 (r'{name}', 'name.ext'),
@@ -190,12 +171,11 @@ class TestExpressions(unittest.TestCase):
                 ]
         files = (resorter.utils.read_filenames([name], False))
         for expr,expected in expressions:
-            for source,dest in resorter.resorter.resort(files, filters, expr, ask_test):
+            for source,dest in process(files, expr, ask_test):
                 self.assertEqual(source, name)
                 self.assertEqual(expected, dest)
     
     def test_hidden_name(self):
-        filters = resorter.resorter.get_filters(None, None, None)
         name = 'rel/path/.name'
         expressions = [
                 (r'{path}', 'rel/path'),
@@ -206,12 +186,11 @@ class TestExpressions(unittest.TestCase):
                 ]
         files = list(resorter.utils.read_filenames([name], False))
         for expr,expected in expressions:
-            for source,dest in resorter.resorter.resort(files, filters, expr, ask_test):
+            for source,dest in process(files, expr, ask_test):
                 self.assertEqual(source, name)
                 self.assertEqual(expected, dest)
 
     def test_text(self):
-        filters = resorter.resorter.get_filters(None, None, None)
         name = 'some_PATH string'
         expressions = [
                 (r'{name}', name),
@@ -227,12 +206,11 @@ class TestExpressions(unittest.TestCase):
                 ]
         files = list(resorter.utils.read_filenames([name], False))
         for expr,expected in expressions:
-            for source,dest in resorter.resorter.resort(files, filters, expr, ask_test):
+            for source,dest in process(files, expr, ask_test):
                 self.assertEqual(source, name)
                 self.assertEqual(expected, dest)
 
     def test_num(self):
-        filters = resorter.resorter.get_filters(None, None, None)
         name = 'path/some_42.65_'
         expressions = [
                 (r'{name.index[4]}', '5'),
@@ -245,18 +223,18 @@ class TestExpressions(unittest.TestCase):
                 (r'{(name[5,10].round-1)/6}', '7.0'),
                 (r'{(name[5,10].round-1)/6^2}', '49.0'),
                 (r'{name[0,4]+path}', 'somepath'),
+                (r'{name[0,4]/path}', 'some/path'),
                 (r'{name[5,7].num+name[8,10]}', '107'),
                 (r'{2^3}', '8'),
                 (r'{-2^3}', '-8'),
                 ]
         files = list(resorter.utils.read_filenames([name], False))
         for expr,expected in expressions:
-            for source,dest in resorter.resorter.resort(files, filters, expr, ask_test):
+            for source,dest in process(files, expr, ask_test):
                 self.assertEqual(source, name)
                 self.assertEqual(expected, dest)
 
     def test_conditions(self):
-        filters = resorter.resorter.get_filters(None, None, None)
         name = 'Hello'
         expressions = [
                 (r'{name.in("Goodbye","Hello","Hi")}', 'True'),
@@ -270,12 +248,11 @@ class TestExpressions(unittest.TestCase):
                 ]
         files = list(resorter.utils.read_filenames([name], False))
         for expr,expected in expressions:
-            for source,dest in resorter.resorter.resort(files, filters, expr, ask_test):
+            for source,dest in process(files, expr, ask_test):
                 self.assertEqual(source, name)
                 self.assertEqual(expected, dest)
 
     def test_comp(self):
-        filters = resorter.resorter.get_filters(None, None, None)
         expressions = [
                 (r'{2=3}', 'False'),
                 (r'{2=2}', 'True'),
@@ -290,7 +267,7 @@ class TestExpressions(unittest.TestCase):
                 ]
         files = list(resorter.utils.read_filenames(['name'], False))
         for expr,expected in expressions:
-            for source,dest in resorter.resorter.resort(files, filters, expr, ask_test):
+            for source,dest in process(files, expr, ask_test):
                 self.assertEqual(expected, dest)
 
 if __name__=='__main__':

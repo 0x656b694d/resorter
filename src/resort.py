@@ -25,7 +25,7 @@ def parse_args():
 
     parser.add_argument('ACTION', default='filter', nargs='?',
                         help='action to be executed over input files ({0})'.format(', '.join(actions.keys())))
-    parser.add_argument('EXPRESSION',  default='./name', nargs='?',
+    parser.add_argument('EXPRESSION',  default='./name', nargs='*',
                         help='specify the expression to format the destination or a @file name. Default: ./name')
 
     parser.add_argument('-f', '--from', dest='input', nargs='?', default='.', #sys.stdin,
@@ -86,8 +86,6 @@ def main():
     args = parse_args()
 
     loglevel = logging.CRITICAL if args.silent else logging.WARNING
-    if args.verbose:
-        loglevel = logging.INFO
     if args.debug:
         loglevel = logging.DEBUG
     logging.basicConfig(
@@ -104,6 +102,8 @@ def main():
     logging.debug(f'filter "{args.include}"')
 
     expression = args.EXPRESSION
+    if isinstance(expression, list):
+        expression = ''.join(expression)
     if expression.startswith('@'):
         with open(expression.lstrip('@'), 'r') as f:
             expression = ''.join(f.readlines())
@@ -122,15 +122,18 @@ def main():
         try:
             s = source.path
             d = str(expression.calc(source))
-            question = ('dry ' if args.dry_run else '') + f'{args.ACTION}: {s} -> {d}\n'
+            question = ('dry ' if args.dry_run else '') + f'{args.ACTION}: {s} -> {d}'
             logging.debug(question)
             if ask:
+                print(question)
                 options = {'Confirm': 'cCyY', 'Ignore': 'iInN', 'Quit': 'qQxX'}
-                answer = ask(question, options , 'c')
+                answer = ask('', options , 'c')
                 if answer in options['Ignore']:
                     continue
                 elif answer in options['Quit']:
                     break
+            elif args.verbose:
+                print(question)
             action(s, d, args.dry_run)
         except Exception as e:
             logging.error(f'Exception: {e}')

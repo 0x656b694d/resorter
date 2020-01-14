@@ -97,6 +97,7 @@ class Text(Module):
             'decode': {'func': cls.decode, 'help': r'decode to current locale. Argument: [source encoding]. Example: {name.decode[cp1251]}'},
             'sub': {'func': cls.sub, 'help': r'substring. Argument: [from,to]. Example: {name.sub[0,4]}'},
             'index': {'func': cls.index, 'help': r'position of a substring. Argument: [substring]. Example: {name.sub[0,name.index[_]]}'},
+            'len': {'func': cls.length, 'help': r'length of a substring. Example: name[5,len(name)]'},
         }
     
     @staticmethod
@@ -140,6 +141,11 @@ class Text(Module):
     @staticmethod
     def decode(_, s, args):
         return codecs.decode(s, *args)
+
+    @staticmethod
+    def length(_, s, args):
+        logging.debug(f'computing length: {s} or {args!r}')
+        return len(args[0]) if args else len(s.path) 
 
 class Counter(Module):
     count = None

@@ -66,7 +66,9 @@ class Exif(modules.Module):
         if not date:
             return 'UnknownTime'
         date = datetime.datetime.strptime(date, '%Y:%m:%d %H:%M:%S')
-        return date.strftime('%d-%b-%Y.%H%M%S' if args is None else args)
+        if args:
+            return date.strftime(args[0])
+        return date.strftime('%d-%b-%Y.%H%M%S')
 
 if OK:
     modules.MODULES.append(Exif)

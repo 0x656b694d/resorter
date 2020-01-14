@@ -157,7 +157,7 @@ class Expression(object):
         class Args(): pass
 
         def callf(farg, source):
-            if not isinstance(farg, list):
+            if not isinstance(farg, list) or not isinstance(farg[0], tuple):
                 return farg
             f, args = farg
             name, func = f
@@ -179,6 +179,8 @@ class Expression(object):
                 b = result.pop()
                 a = result.pop()
                 if value == ',':
+                    a = callf(a, source)
+                    b = callf(b, source)
                     if isinstance(a, list):
                         a.append(b)
                         result.append(a)
@@ -213,48 +215,27 @@ class Expression(object):
                         result.append(a <= b)
                     elif value == '~=':
                         a = str(a)
-                        b = str(a)
+                        b = str(b)
                         result.append(True if re.fullmatch(b, a) else False)
-
-                elif value in '/\\':
-                    a = callf(a, source)
-                    b = callf(b, source)
-                    if type(a) == type(b) and type(a) == str:
-                        result.append(a+os.sep+b)
-                    else:
-                        if type(a) not in [int, float]:
-                            a = str(a)
-                            a = (float if '.' in a else int)(a)
-                        if type(b) not in [int, float]:
-                            b = str(b)
-                            b = (float if '.' in b else int)(b)
-                        result.append(a / b)
-                elif value == '+':
-                    a = callf(a, source)
-                    b = callf(b, source)
-                    if type(a) != type(b):
-                        if type(a) not in [int, float]:
-                            a = str(a)
-                            a = (float if '.' in a else int)(a)
-                        if type(b) not in [int, float]:
-                            b = str(b)
-                            b = (float if '.' in b else int)(b)
-
-                    result.append(a + b)
-                else: # numeric
+                elif type(a) in (int, float) or type(b) in (int, float): # numeric
                     a = callf(a, source)
                     b = callf(b, source)
 
-                    if type(a) not in [int, float]:
+                    if type(a) not in (int, float):
                         a = str(a)
                         a = (float if '.' in a else int)(a)
-                    if type(b) not in [int, float]:
+                    if type(b) not in (int, float):
                         b = str(b)
                         b = (float if '.' in b else int)(b)
+
+                    if value == '+':
+                        result.append(a+b)
                     elif value == '-':
                         result.append(a-b)
                     elif value == '*':
                         result.append(a*b)
+                    elif value == '/':
+                        result.append(a/b)
                     elif value == '%':
                         result.append(a%b)
                     elif value == '^':
@@ -263,6 +244,15 @@ class Expression(object):
                         result.append(a | b)
                     elif value == '&':
                         result.append(a & b)
+                else:
+                    a = callf(a, source)
+                    b = callf(b, source)
+                    if value == '+':
+                        result.append(a + b)
+                    elif value in '/\\':
+                        result.append(a + os.sep + b)
+                    else:
+                        result.append(a + value + b)
 
             elif kind == 'ARGS':
                 result.append(Args())
@@ -270,9 +260,10 @@ class Expression(object):
                 args = None
                 if len(result) and isinstance(result[-1], Args):
                     result.pop()
-                    args = result.pop()
+                    args = callf(result.pop(), source)
                     if not isinstance(args, list):
                         args = [ args ]
+                    
                 result.append([value, args])
             else:
                 logging.debug(f'adding {value}')

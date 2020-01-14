@@ -156,7 +156,7 @@ class TestPolish(unittest.TestCase):
 def process(files, expr, ask):
     expr = resorter.utils.Expression(expr, resorter.modules.FUNCTIONS)
     for source in files:
-        yield (source.path, str(expr.calc(source)))
+        yield (source, str(expr.calc(source)))
     return True
 
 class TestExpressions(unittest.TestCase):
@@ -203,6 +203,8 @@ class TestExpressions(unittest.TestCase):
                 (r'{name.replace[" ","_"]}', 'some_PATH_string'),
                 (r'{name.replace["PATH","xxx"]}', 'some_xxx string'),
                 (r'{name.index["PATH"]}', '5'),
+                (r'{name.len}', str(len(name))),
+                (r'{name[len(name)-6, len(name)]}', 'string'),
                 ]
         files = list(resorter.utils.read_filenames([name], False))
         for expr,expected in expressions:

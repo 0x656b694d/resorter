@@ -18,7 +18,7 @@ def read_filenames(source, recursive):
             for entry in it:
                 if not entry.is_dir():
                     logging.info(f'found {entry.path}')
-                    yield entry
+                    yield entry.path
                 elif recursive:
                     logging.debug(f'entering directory {entry.path}')
                     yield from read_filenames(entry.path, recursive)
@@ -32,7 +32,7 @@ def read_filenames(source, recursive):
             if os.path.isdir(line):
                 yield from read_filenames(line, recursive)
             else:
-                yield PathEntry(line)
+                yield line
 
 def tokenize(expr, keywords):
     logging.debug(expr)
@@ -97,8 +97,6 @@ def polish(tokens):
                 return ['OP', op]
         prev = (None, None)
         for kind, value in tokens:
-            logging.debug(f'found token {kind}: {value}')
-            logging.debug(f'ops queue: {ops_q!r}')
             if kind == 'OP':
                 if value == '-' and (prev[0] in [None, 'OP'] or prev[1] in BRACKETS.keys()):
                     logging.debug(f'unary minus because {prev}')
@@ -139,6 +137,29 @@ def polish(tokens):
         logging.debug(f'Polish notation: {result!r}')
         return result
 
+class FuncError(Exception):
+    def __init__(self, exc, funcb):
+        self.exc = exc
+        self.funcb = funcb
+
+class FuncB(object):
+    def __init__(self, name, func, hlp):
+        self.name = name
+        self.func = func
+        self.help = hlp
+        self.args = []
+
+    def __repr__(self):
+        return f'Function_{self.name}({self.args})'
+
+    def call(self):
+        try:
+            v = self.func(self.name, self.args)
+            logging.debug(f'{self.name}({self.args!r}) returned {v}')
+            return v
+        except Exception as e:
+            raise FuncError(e, self)
+
 class Expression(object):
     def __init__(self, expr, keywords):
         self.keywords = keywords
@@ -148,7 +169,8 @@ class Expression(object):
         for kv in self.polish:
             kind, value = kv
             if kind == 'FUNC':
-                kv[1] = (value.name, keywords[value.name]['func'])
+                f = keywords[value.name]
+                kv[1] = FuncB(value.name, f['func'], f['help'])
                 logging.debug(f'found FUNC {value.name}: {kv[1]!r}')
 
     def calc(self, source):
@@ -156,14 +178,10 @@ class Expression(object):
         result = []
         class Args(): pass
 
-        def callf(farg, source):
-            if not isinstance(farg, list) or not isinstance(farg[0], tuple):
-                return farg
-            f, args = farg
-            name, func = f
-            v = func(name, source, args)
-            logging.debug(f'{name}({args!r}) returned {v}')
-            return v
+        def callf(funcarg):
+            if not isinstance(funcarg, FuncB):
+                return funcarg
+            return funcarg.call()
 
         for kind, value in self.polish:
             logging.debug(f'... {kind} {value}')
@@ -175,33 +193,27 @@ class Expression(object):
                 result.append(-a)
             elif kind == 'OP' and len(result) < 2:
                 result.append(value)
-            elif kind == 'OP':
+            elif kind == 'OP' and value == '.':
                 b = result.pop()
                 a = result.pop()
+                logging.debug(f'appending left op to {b}')
+                b.args[0] = callf(a)
+                result.append(callf(b))
+            elif kind == 'OP':
+                b = callf(result.pop())
+                a = callf(result.pop())
                 if value == ',':
-                    a = callf(a, source)
-                    b = callf(b, source)
                     if isinstance(a, list):
                         a.append(b)
                         result.append(a)
                     else:
                         result.append([a,b])
-                elif value == '.':
-                    logging.debug(f'computing {a!r}.{b!r}')
-                    v = callf(a, source)
-                    v = callf(b, v)
-                    result.append(v)
-                elif value in LOGIC:
-                    a = callf(a, source)
-                    b = callf(b, source)
+                elif value in LOGIC or value in COMP:
                     if value == '||':
                         result.append(a or b)
-                    if value == '&&':
+                    elif value == '&&':
                         result.append(a and b)
-                elif value in COMP:
-                    a = callf(a, source)
-                    b = callf(b, source)
-                    if value == '<':
+                    elif value == '<':
                         result.append(a < b)
                     elif value == '>':
                         result.append(a > b)
@@ -218,8 +230,6 @@ class Expression(object):
                         b = str(b)
                         result.append(True if re.fullmatch(b, a) else False)
                 elif type(a) in (int, float) or type(b) in (int, float): # numeric
-                    a = callf(a, source)
-                    b = callf(b, source)
 
                     if type(a) not in (int, float):
                         a = str(a)
@@ -245,8 +255,6 @@ class Expression(object):
                     elif value == '&':
                         result.append(a & b)
                 else:
-                    a = callf(a, source)
-                    b = callf(b, source)
                     if value == '+':
                         result.append(a + b)
                     elif value in '/\\':
@@ -257,20 +265,21 @@ class Expression(object):
             elif kind == 'ARGS':
                 result.append(Args())
             elif kind == 'FUNC':
-                args = None
+                logging.debug(f'--- {value!r} -- {result}')
+                args = [ source ]
                 if len(result) and isinstance(result[-1], Args):
-                    result.pop()
-                    args = callf(result.pop(), source)
-                    if not isinstance(args, list):
-                        args = [ args ]
-                    
-                result.append([value, args])
+                    result.pop() # Args marker
+                    a = callf(result.pop()) # arguments values
+                    logging.debug(f'args on stack: {a}')
+                    (args.extend if isinstance(a, list) else args.append)(a)
+                value.args = args
+                result.append(value)
             else:
                 logging.debug(f'adding {value}')
                 result.append(value)
             logging.debug(f'result: {result!r}')
         
-        result = callf(result.pop(), source)
+        result = callf(result.pop())
 
         logging.debug(f'computed {result!r}')
         return result

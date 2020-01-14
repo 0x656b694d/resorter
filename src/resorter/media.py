@@ -18,14 +18,13 @@ class Media(modules.Module):
 
     @classmethod
     def open(cls, f):
-        return MediaInfo.parse(f.path)
+        return MediaInfo.parse(f)
     
     @staticmethod
-    def track(_, f, args):
-        logging.debug('reading %s from %s', args, f)
-        media = Media.cache(f)
+    def track(_, args):
+        media = Media.cache(args[0])
         logging.debug('found media %s', media)
-        t = args
+        t = args[1:]
         if len(t) == 1:
             prop = t[0]
             n = None

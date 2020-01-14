@@ -20,39 +20,35 @@ class Module(object):
 
     @staticmethod
     def range(args):
-        a,b=0,-1
+        a, b = 0, None
         if args is None:
-            return (a,b)
+            return (a, b)
         if len(args) > 0:
             if args[0]:
                 a = int(args[0])
             b = a + 1
         if len(args) > 1 and args[1]:
             b = int(args[1])
-
-        return (a,b)
+        return (a, b)
 
     @staticmethod
-    def section(s, args):
-        if args is None: return s
-        a,b = Module.range(args)
+    def slice(s, rng):
+        if rng is None: return s
+        a, b = rng
         return s[a:b]
 
 class Num(Module):
     @classmethod
     def functions(cls):
         return {
-            'round': {'func': cls.round_func, 'help': r'round a number. Argument: [precision]. Example: {size[k].round[1]}'},
-            'num': {'func': cls.number, 'help': r'convert string to an number'},
+            'round': {'func': cls.number, 'help': r'round a number. Argument: [precision]. Example: {size[k].round[1]}'},
+            'num': {'func': cls.number, 'help': r'convert string to an number. Argument: [precision]'},
         }
     @staticmethod
-    def round_func(_, n, args):
-        n = float(n)
-        return round(n, *args) if args else round(n)
-    @staticmethod
-    def number(_, source, args):
-        n = (float if '.' in source else int)(source)
-        return round(n, *args) if args else n
+    def number(_, args):
+        n = (float if '.' in args[0] else int)(args[0])
+        p = int(args[1]) if len(args) > 1 else 0
+        return round(n, p) if p else round(n)
 
 class Conditions(Module):
     @classmethod
@@ -66,24 +62,22 @@ class Conditions(Module):
         }
 
     @staticmethod
-    def eef(_, s, args):
-        if not args or len(args) not in [1,2,3]:
-            raise RuntimeError('function arguments mismatch: ' + Conditions.functions['if'].help)
-        if isinstance(s, bool):
-            return args[0] if s else args[1] if len(args) == 2 else ''
-        return args[1] if args[0] else args[2] if len(args) == 3 else ''
+    def eef(_, args):
+        if len(args) == 3:
+            return args[1] if args[0] else args[2]
+        return args[2] if args[1] else args[3]
     @staticmethod
-    def aany(_, s, args):
-        return any(args or s)
+    def aany(_, args):
+        return any(args[1:])
     @staticmethod
-    def aall(_, s, args):
-        return all(args or s)
+    def aall(_, args):
+        return all(args[1:])
     @staticmethod
-    def een(_, s, args):
-        return s in args
+    def een(_, args):
+        return args[0] in args[1:]
     @staticmethod
-    def noot(_, s, args):
-        return not (args[0] if args else s)
+    def noot(_, args):
+        return not args[-1]
 
 class Text(Module):
     @classmethod
@@ -111,41 +105,40 @@ class Text(Module):
         return result
 
     @staticmethod
-    def sub(_, s, args):
-        return Module.section(s, args)
+    def sub(_, args):
+        logging.debug(f'{args}')
+        return Module.slice(args[0], Module.range(args[1:]))
     @staticmethod
-    def index(_, s, args):
-        if not args: raise RuntimeError('missing index function parameter')
+    def index(_, args):
         result = -1
-        for arg in args:
-            result = s.find(str(arg))
+        for arg in args[1:]:
+            result = args[0].find(str(arg))
             if result != -1:
                 break
         return result
 
     @staticmethod
-    def cap(_, s, args):
-        return Text.change(args, s, str.capitalize)
+    def cap(_, args):
+        return args[0].capitalize()
     @staticmethod
-    def low(_, s, args):
-        return Text.change(args, s, str.lower)
+    def low(_, args):
+        return args[0].lower()
     @staticmethod
-    def up(_, s, args):
-        return Text.change(args, s, str.upper)
+    def up(_, args):
+        return args[0].upper()
     @staticmethod
-    def title(_, s, args):
-        return Text.change(args, s, str.title)
+    def title(_, args):
+        return args[0].title()
     @staticmethod
-    def replace(_, s, args):
-        return s.replace(*args)
+    def replace(_, args):
+        return args[0].replace(*args[1:])
     @staticmethod
-    def decode(_, s, args):
-        return codecs.decode(s, *args)
+    def decode(_, args):
+        return codecs.decode(*args)
 
     @staticmethod
-    def length(_, s, args):
-        logging.debug(f'computing length: {s} or {args!r}')
-        return len(args[0]) if args else len(s.path) 
+    def length(_, args):
+        return len(args[0])
 
 class Counter(Module):
     count = None
@@ -158,15 +151,13 @@ class Counter(Module):
         }
 
     @staticmethod
-    def counter(_, f, args):
-        print(Counter.count)
+    def counter(_, args):
         if Counter.count is None:
             Counter.count = 0
-            if len(args) > 0:
-                Counter.count = args[0]
             if len(args) > 1:
-                Counter.step = args[1]
-        logging.debug('counting %s by %s', Counter.count, Counter.step)
+                Counter.count = args[1]
+            if len(args) > 2:
+                Counter.step = args[2]
         Counter.count += Counter.step
         return Counter.count
 
@@ -186,38 +177,34 @@ class FileInfo(Module):
             'mtime': {'func': cls.mtime, 'help': r"file last modification time. Argument: [python time format string]. Example: {mtime['%Y']}"},
         }
 
-    @staticmethod
-    def name(_, f, args):
-        if not isinstance(f, str): f = f.path
-        return Module.section(os.path.basename(f), args)
-    @staticmethod
-    def abspath(_, f, args):
-        if not isinstance(f, str): f = f.path
-        return Module.section(os.path.abspath(os.path.dirname(f)), args)
-    @staticmethod
-    def path(_, f, args):
-        if not isinstance(f, str): f = f.path
-        return Module.section(os.path.dirname(f), args)
-    @staticmethod
-    def ext(_, f, args):
-        if not isinstance(f, str): f = f.path
-        _, ext = os.path.splitext(f)
-        return Module.section(ext, args)
-    @staticmethod
-    def nam(_, f, args):
-        if not isinstance(f, str): f = f.path
-        root, _ = os.path.splitext(os.path.basename(f))
-        return Module.section(root, args)
+    @classmethod
+    def open(cls, f):
+        return os.stat(f)
 
     @staticmethod
-    def size(_, f, args):
-        if isinstance(f, str):
-            s = os.stat(f).st_size
-        else:
-            s = f.stat().st_size
-        if args is None:
+    def name(_, args):
+        return Module.slice(os.path.basename(args[0]), Module.range(args[1:]))
+    @staticmethod
+    def abspath(_, args):
+        return Module.slice(os.path.abspath(os.path.dirname(args[0])), Module.range(args[1:]))
+    @staticmethod
+    def path(_, args):
+        return Module.slice(os.path.dirname(args[0]), Module.range(args[1:]))
+    @staticmethod
+    def ext(_, args):
+        _, ext = os.path.splitext(args[0])
+        return Module.slice(ext, Module.range(args[1:]))
+    @staticmethod
+    def nam(_, args):
+        root, _ = os.path.splitext(os.path.basename(args[0]))
+        return Module.slice(root, Module.range(args[1:]))
+
+    @staticmethod
+    def size(_, args):
+        s = FileInfo.cache(args[0]).st_size
+        if len(args) == 1:
             return s
-        args = args[0]
+        args = args[1]
         if args in 'kK': s = s / 1024
         elif args in 'mM': s = s / 1024 / 1024
         elif args in 'gG': s = s / 1024 / 1024 / 1024
@@ -226,21 +213,20 @@ class FileInfo(Module):
         return s
 
     @staticmethod
-    def atime(_, f, args):
-        if isinstance(f, str): raise RuntimeError('method not supported')
-        t = time.localtime(f.stat().st_atime)
-        return time.strftime('%d-%b-%Y.%H%M%S' if args is None else args, t)
+    def atime(_, args):
+        s = FileInfo.cache(args[0])
+        t = time.localtime(s.st_atime)
+        return time.strftime('%d-%b-%Y %H-%M-%S' if len(args)<2 else args[1], t)
     @staticmethod
-    def mtime(_, f, args):
-        if isinstance(f, str): raise RuntimeError('method not supported')
-        t = time.localtime(f.stat().st_mtime)
-        return time.strftime('%d-%b-%Y.%H%M%S' if args is None else args, t)
+    def mtime(_, args):
+        s = FileInfo.cache(args[0])
+        t = time.localtime(s.st_mtime)
+        return time.strftime('%d-%b-%Y %H-%M-%S' if len(args)<2 else args[1], t)
     @staticmethod
-    def ctime(_, f, args):
-        if isinstance(f, str): raise RuntimeError('method not supported')
-        t = time.localtime(f.stat().st_ctime)
-        return time.strftime('%d-%b-%Y.%H%M%S' if args is None else args, t)
-
+    def ctime(_, args):
+        s = FileInfo.cache(args[0])
+        t = time.localtime(s.st_ctime)
+        return time.strftime('%d-%b-%Y %H-%M-%S' if len(args)<2 else args[1], t)
 
 MODULES=[Text, Num, Counter, FileInfo, Conditions]
 FUNCTIONS={}

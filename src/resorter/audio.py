@@ -25,8 +25,8 @@ class Id3(modules.Module):
         return stagger.read_tag(source.path)
     
     @staticmethod
-    def tag(func, source, args):
-        id3 = Id3.cache(source)
+    def tag(func, args):
+        id3 = Id3.cache(args[0])
         return id3.__getattribute__(func.lstrip('id3_'))
 
 if OK:

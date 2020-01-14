@@ -36,33 +36,33 @@ class Exif(modules.Module):
         return image.get(s) if image and image.has_exif else None
 
     @staticmethod
-    def coo(func, f, args):
-        e = Exif.get(f, 'gps_'+func.lstrip('exif_'))
+    def coo(func, args):
+        e = Exif.get(args[0], 'gps_'+func.lstrip('exif_'))
         if not e: return 'NoGPS'
         d,m,s = e
         return d + m/60 + s/3600
 
     @staticmethod
-    def altitude(_, f, args):
-        return Exif.get(f, 'gps_altitude')
+    def altitude(_, args):
+        return Exif.get(args[0], 'gps_altitude')
 
     @staticmethod
-    def camera(key, f, args):
+    def camera(key, args):
         key = key[len('exif_'):]
-        value = Exif.get(f, key)
+        value = Exif.get(args[0], key)
         return value.strip() if value else 'Unknown'+key.capitalize()
 
     @staticmethod
-    def software(_, f, args):
-        return Exif.get(f, 'software') or 'UnknownSoftware'
+    def software(_, args):
+        return Exif.get(args[0], 'software') or 'UnknownSoftware'
 
     @staticmethod
-    def flash(_, f, args):
-        return Exif.get(f, 'flash') or 'UnknownFlash'
+    def flash(_, args):
+        return Exif.get(args[0], 'flash') or 'UnknownFlash'
 
     @staticmethod
-    def time(_, f, args):
-        date = Exif.get(f, 'datetime')
+    def time(_, args):
+        date = Exif.get(args[0], 'datetime')
         if not date:
             return 'UnknownTime'
         date = datetime.datetime.strptime(date, '%Y:%m:%d %H:%M:%S')

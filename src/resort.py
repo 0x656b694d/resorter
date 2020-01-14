@@ -85,9 +85,13 @@ def main():
 
     args = parse_args()
 
-    loglevel = logging.CRITICAL if args.silent else logging.WARNING
+    loglevel = logging.CRITICAL
     if args.debug:
-        loglevel = logging.DEBUG
+        loglevel = logging.WARNING
+        if args.verbose:
+            loglevel = logging.DEBUG
+        if args.silent:
+            loglevel = logging.CRITICAL
     logging.basicConfig(
         format='%(levelname)s:%(module)s.%(funcName)s: %(message)s', level=loglevel)
     
@@ -120,7 +124,7 @@ def main():
 
     for source in files:
         try:
-            s = source.path
+            s = source
             d = str(expression.calc(source))
             question = ('dry ' if args.dry_run else '') + f'{args.ACTION}: {s} -> {d}'
             logging.debug(question)
@@ -135,6 +139,18 @@ def main():
             elif args.verbose:
                 print(question)
             action(s, d, args.dry_run)
+        except resorter.utils.FuncError as e:
+            logging.error(f'Exception: {e}')
+            if loglevel == logging.DEBUG:
+                traceback.print_tb(sys.exc_info()[2])
+            func = e.funcb
+            args.silent or print(f"Error in function '{func.name}{func.args}: {e.exc}'.\nHelp: {func.help}\n", file=sys.stderr)
+            if args.ignore:
+                args.silent or print(e, file=sys.stderr)
+            elif args.stop or ask_cli(f'Could not {args.ACTION} {s}.',
+                    {'Quit': 'qQ', 'Ignore': 'iI'}, 'i') in 'qQ':
+                break
+
         except Exception as e:
             logging.error(f'Exception: {e}')
             if loglevel == logging.DEBUG:

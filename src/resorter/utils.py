@@ -34,13 +34,16 @@ def read_filenames(source, recursive):
             else:
                 yield line
 
+def unescape(s):
+    return s.replace(r'\t', '\t').replace(r'\r', '\r').replace(r'\n', '\n').replace(r'\'', '\'').replace(r'\"', '"')
+
 def tokenize(expr, keywords):
     logging.debug(expr)
 
     token_spec = [
             ('NUMBER',   r'\d+(\.\d*)?'),  # Integer or decimal number
-            ('STRING',   r"'[^']*'"),      # 'Strings'
-            ('STRING2',  r'"[^"]*"'),      # "Strings"
+            ('STRING',   r"'(?:[^'\\]|\\.)*'"), # 'Strings'
+            ("STRING2",  r'"(?:[^"\\]|\\.)*"'), # "Strings"
             ('ID',       r'[A-Za-z_]+'),   # Identifiers
             ('OP',       r'[:+\-*/\^.,%]|\|\||&&|\||&|==?|<=|>=|<>|[<>]|!=|~='), # Arithmetic operators
             ('BRACKETS', r'[\(\)\[\]{}]'),   # Brackets
@@ -51,20 +54,17 @@ def tokenize(expr, keywords):
     for mo in re.finditer(tok_regex, expr):
         kind = mo.lastgroup
         value = mo.group()
+        logging.debug(f'{kind}: {value}')
         if kind == 'NUMBER':
             value = float(value) if '.' in value else int(value)
-        elif kind == 'STRING':
-            value = value.strip("'")
-        elif kind == 'STRING2':
-            value = value.strip('"')
-        elif kind == 'ID':
-            if value in keywords:
-                kind = 'FUNC'
-        elif kind == 'SKIP':
-            continue
+        elif kind.startswith('STRING'):
+            value = unescape(value[1:-1])
+        elif kind == 'ID' and value in keywords:
+            kind = 'FUNC'
         elif kind == 'MISMATCH':
             raise RuntimeError(f'unexpected {value!r} while parsing {expr}')
-        yield (kind, value)
+        if kind != 'SKIP':
+            yield (kind, value)
 
 class Func(object):
     def __init__(self, name):

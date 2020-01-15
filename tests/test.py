@@ -205,6 +205,7 @@ class TestExpressions(unittest.TestCase):
                 (r'{name.index["PATH"]}', '5'),
                 (r'{name.len}', str(len(name))),
                 (r'{name[len(name)-6, len(name)]}', 'string'),
+                (r'name:len+xx', name+str(len(name))+'xx'),
                 ]
         files = list(resorter.utils.read_filenames([name], False))
         for expr,expected in expressions:

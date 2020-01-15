@@ -25,8 +25,8 @@ def parse_args():
 
     parser.add_argument('ACTION', default='filter', nargs='?',
                         help='action to be executed over input files ({0})'.format(', '.join(actions.keys())))
-    parser.add_argument('EXPRESSION',  default='./name', nargs='*',
-                        help='specify the expression to format the destination or a @file name. Default: ./name')
+    parser.add_argument('EXPRESSION',  default='name', nargs='*',
+                        help='specify the expression to format the destination or a @file name. Default: name')
 
     parser.add_argument('-f', '--from', dest='input', nargs='?', default='.', #sys.stdin,
                         help='read file names from a directory, a file. Default: stdin')
@@ -66,7 +66,7 @@ def parse_args():
                         const=True, default=False,
                         help='list available functions to use in EXPR')
 
-    return parser.parse_intermixed_args()
+    return parser.parse_args()
 
 def ask_cli(msg, opts, default=None):
     answer = None
@@ -105,12 +105,13 @@ def main():
     logging.debug(f'expr "{args.EXPRESSION}"')
     logging.debug(f'filter "{args.include}"')
 
-    expression = args.EXPRESSION
-    if isinstance(expression, list):
-        expression = ''.join(expression)
-    if expression.startswith('@'):
-        with open(expression.lstrip('@'), 'r') as f:
-            expression = ''.join(f.readlines())
+    expressions = []
+    for e in args.EXPRESSION:
+        if e.startswith('@'):
+            with open(e.lstrip('@'), 'r') as f:
+                e = ' '.join(f.readlines())
+        e = resorter.utils.Expression(e, resorter.modules.FUNCTIONS) 
+        expressions.append(e)
 
     files = resorter.utils.read_filenames(sys.stdin if args.input == '-' else args.input, args.recursive)
     if args.include:
@@ -118,14 +119,14 @@ def main():
         files = filter(filter_expr.calc, files)
     
     action = resorter.actions.ACTIONS[args.ACTION]['func']
-    expression = resorter.utils.Expression(expression, resorter.modules.FUNCTIONS)
 
     ask = ask_cli if args.ask else None
 
     for source in files:
         try:
             s = source
-            d = str(expression.calc(source))
+
+            d = ''.join(str(e.calc(source)) for e in expressions)
             question = ('dry ' if args.dry_run else '') + f'{args.ACTION}: {s} -> {d}'
             logging.debug(question)
             if ask:

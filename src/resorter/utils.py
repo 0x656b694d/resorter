@@ -42,7 +42,7 @@ def tokenize(expr, keywords):
             ('STRING',   r"'[^']*'"),      # 'Strings'
             ('STRING2',  r'"[^"]*"'),      # "Strings"
             ('ID',       r'[A-Za-z_]+'),   # Identifiers
-            ('OP',       r'[+\-*/\^.,%]|\|\||&&|\||&|==?|<=|>=|<>|[<>]|!=|~='), # Arithmetic operators
+            ('OP',       r'[:+\-*/\^.,%]|\|\||&&|\||&|==?|<=|>=|<>|[<>]|!=|~='), # Arithmetic operators
             ('BRACKETS', r'[\(\)\[\]{}]'),   # Brackets
             ('SKIP',     r'[ \t]+'),       # Skip over spaces and tabs
             ('MISMATCH', r'.'),            # Any other character
@@ -81,7 +81,7 @@ class Func(object):
 
 LOGIC = ['||', '&&']
 COMP = ['=', '>', '<', '==', '>=', '<=', '!=', '<>', '~=']
-OPS = [','] + LOGIC + COMP + ['+','-','|','--','^','/','*','&','%','.']
+OPS = [','] + LOGIC + COMP + ['+','-','|','--','^','/','*','&','%',':','.']
 BRACKETS = { '[': ']', '(': ')', '{': '}'}
 
 def polish(tokens):
@@ -208,6 +208,8 @@ class Expression(object):
                         result.append(a)
                     else:
                         result.append([a,b])
+                elif value == ':':
+                    result.append(str(a)+str(b))
                 elif value in LOGIC or value in COMP:
                     if value == '||':
                         result.append(a or b)

@@ -231,7 +231,7 @@ class Expression(object):
                         a = str(a)
                         b = str(b)
                         result.append(True if re.fullmatch(b, a) else False)
-                elif type(a) in (int, float) or type(b) in (int, float): # numeric
+                elif type(a) in (int, float) and type(b) in (int, float): # numeric
 
                     if type(a) not in (int, float):
                         a = str(a)
@@ -257,6 +257,8 @@ class Expression(object):
                     elif value == '&':
                         result.append(a & b)
                 else:
+                    if not isinstance(a, str): a = str(a)
+                    if not isinstance(b, str): b = str(b)
                     if value == '+':
                         result.append(a + b)
                     elif value in '/\\':

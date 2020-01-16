@@ -20,12 +20,12 @@ def parse_args():
     examples = """
     Example: %(prog)s -f photos copy exif_make/name
     """
-    parser = argparse.ArgumentParser(description='File organizer', prog='resorter', fromfile_prefix_chars='@', epilog=examples)
+    parser = argparse.ArgumentParser(description='File organizer', prog='resort', fromfile_prefix_chars='@', epilog=examples)
     actions = resorter.actions.ACTIONS
 
     parser.add_argument('ACTION', default='filter', nargs='?',
                         help='action to be executed over input files ({0})'.format(', '.join(actions.keys())))
-    parser.add_argument('EXPRESSION',  default='name', nargs='*',
+    parser.add_argument('EXPRESSION', default=['./name'], nargs='*',
                         help='specify the expression to format the destination or a @file name. Default: name')
 
     parser.add_argument('-f', '--from', dest='input', nargs='?', default='.', #sys.stdin,
@@ -42,7 +42,7 @@ def parse_args():
                         help='be silent')
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_const',
                         const=True, default=False,
-                        help='be verbose')
+                        help='be verbose. Include arguments and examples to the --list-functions output')
     parser.add_argument('-g', '--debug', dest='debug', action='store_const',
                         const=True, default=False,
                         help='print debug messages')
@@ -98,7 +98,7 @@ def main():
     resorter.modules.update()
 
     if args.list_functions:
-        resorter.modules.list_functions()
+        resorter.modules.list_functions(args.verbose)
         return
 
     logging.debug(f'action "{args.ACTION}"')

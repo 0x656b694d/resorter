@@ -1,5 +1,5 @@
 try:
-    import exif
+    import exifread
     OK = True
 except:
     OK = False
@@ -7,67 +7,73 @@ except:
 import datetime
 import resorter.modules as modules
 
+exif_tags = {
+        'software': 'EXIF Software',
+        'time': 'EXIF DateTime',
+        'width': 'EXIF ImageWidth',
+        'height': 'EXIF ImageLength',
+        'flash': 'EXIF Flash',
+
+        'make': 'Image Make',
+        'model': 'Image Model',
+
+        'lon': 'GPS GPSLongitude',
+        'lat': 'GPS GPSLatitude',
+        'alt': 'GPS GPSAltitude',
+        }
+
 class Exif(modules.Module):
 
     @classmethod
     def functions(cls):
         return {
-            'exif_make': {'func': cls.camera, 'help': r''},
-            'exif_model': {'func': cls.camera, 'help': r''},
-            'exif_flash': {'func': cls.flash, 'help': r''},
-            'exif_software': {'func': cls.software, 'help': r''},
-            'exif_time': {'func': cls.time, 'help': r''},
+            'exif_make': {'func': cls.generic, 'help': r'the camera maker'},
+            'exif_model': {'func': cls.generic, 'help': r'the camera model'},
+            'exif_flash': {'func': cls.generic, 'help': r'flash info'},
+            'exif_software': {'func': cls.generic, 'help': r'editing software'},
+            'exif_time': {'func': cls.time, 'help': r'image timestamp'},
             'exif_lon': {'func': cls.coo, 'help': r'GPS longitude'},
             'exif_lat': {'func': cls.coo, 'help': r'GPS latitude'},
-            'exif_alt': {'func': cls.altitude, 'help': r'GPS altitude'},
+            'exif_alt': {'func': cls.generic, 'help': r'GPS altitude'},
+            'exif_width': {'func': cls.generic, 'help': r'pixel width'},
+            'exif_height': {'func': cls.generic, 'help': r'pixel height'},
             }
 
     @classmethod
     def open(cls, f):
         try:
             with open(f, 'rb') as fd:
-                return exif.Image(fd)
+                return exifread.process_file(fd)
         except:
             return None
     
     @staticmethod
     def get(f, s):
         image = Exif.cache(f)
-        return image.get(s) if image and image.has_exif else None
+        if not image: return None
+        value = image.get(s, None)
+        return value
 
     @staticmethod
-    def coo(func, args):
-        e = Exif.get(args[0], 'gps_'+func.lstrip('exif_'))
-        if not e: return 'NoGPS'
+    def generic(key, args):
+        return Exif.get(args[0], exif_tags[key[5:]]) or 'No'+key[5:].capitalize()
+
+    @staticmethod
+    def coo(key, args):
+        e = Exif.get(args[0], exif_tags[key[5:]])
+        if e is None:
+            return 'No'+key[5:].capitalize()
         d,m,s = e
         return d + m/60 + s/3600
 
     @staticmethod
-    def altitude(_, args):
-        return Exif.get(args[0], 'gps_altitude')
-
-    @staticmethod
-    def camera(key, args):
-        key = key[len('exif_'):]
-        value = Exif.get(args[0], key)
-        return value.strip() if value else 'Unknown'+key.capitalize()
-
-    @staticmethod
-    def software(_, args):
-        return Exif.get(args[0], 'software') or 'UnknownSoftware'
-
-    @staticmethod
-    def flash(_, args):
-        return Exif.get(args[0], 'flash') or 'UnknownFlash'
-
-    @staticmethod
     def time(_, args):
-        date = Exif.get(args[0], 'datetime')
-        if not date:
+        date = Exif.get(args[0], exif_tags[key[5:]])
+        if date is None:
             return 'UnknownTime'
         date = datetime.datetime.strptime(date, '%Y:%m:%d %H:%M:%S')
-        if args:
-            return date.strftime(args[0])
+        if len(args)>1:
+            return date.strftime(args[1])
         return date.strftime('%d-%b-%Y.%H%M%S')
 
 if OK:

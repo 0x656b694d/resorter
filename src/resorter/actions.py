@@ -25,17 +25,16 @@ def action_move(source, dst, dry=False):
     else:
         pass
 
-def action_check(source, dst, dry=False):
-    if source != dst:
-        print(f'{source} <> {dst}')
-
 def action_filter(source, dst, dry=False):
     print(f'{source}')
 
+def action_print(source, dst, dry=False):
+    if source != dst:
+        print(' '.join(os.path.normcase(filename).replace(' ', '\\ ') for filename in (source, dst)))
 
 ACTIONS = {
         'copy':  {'func': action_copy,  'help':'copy input file to the computed location'},
         'move':  {'func': action_move,  'help':'move file file to the computed location'},
-        'check': {'func': action_check, 'help':'check if the source and destination paths are equal'},
-        'filter': {'func': action_filter, 'help':'print the source paths only'}
+        'filter': {'func': action_filter, 'help':'print the source paths only'},
+        'print': {'func': action_print, 'help':'print the source and the destination paths if they differ'}
         }

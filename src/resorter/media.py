@@ -13,7 +13,9 @@ class Media(modules.Module):
     @classmethod
     def functions(cls):
         return {
-            'track': {'func': cls.track, 'help': r'MediaInfo (https://mediaarea.net/en/MediaInfo) track data. Arguments: track id or type, property. Example: {track[Video,format]}'},
+            'track': {'func': cls.track,
+                'help': r'MediaInfo (https://mediaarea.net/en/MediaInfo) track data',
+                'args': ['track id or type', 'property'], 'example': 'track["Video","format"]', 'source': 'demo.avi', 'output': 'MPEG-4 Visual'},
             } if MediaInfo.can_parse() else {}
 
     @classmethod

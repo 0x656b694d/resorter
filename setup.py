@@ -12,17 +12,18 @@ setup(
     classifiers=[
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: GNU General Public License, version 3',
-        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.6',
         ],
     keywords='',
     package_dir={'': 'src'},
     packages=find_packages(where='src'),
-    python_requires='>=3.7, <4',
+    python_requires='>=3.6, <4',
     extras_require={
         },
+    scripts=["src/resort"],
     entry_points={
         'console_scripts': [
-            'resorter=resorter:main',
+            'resorter=resort:main',
             ],
         }
     )

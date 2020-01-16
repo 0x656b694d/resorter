@@ -220,14 +220,14 @@ class TestExpressions(unittest.TestCase):
                 (r'{name.sub[name.index[4]]}', '4'),
                 (r'{name.sub[5,10].round}', '43'),
                 (r'{name.sub[5,10].round[2]}', '42.65'),
-                (r'{name.sub[5,10]-1.5}', '41.15'),
-                (r'{name.sub[5,10]+1.5}', '44.15'),
+                (r'{name.sub[5,10].num-1.5}', '41.15'),
+                (r'{name.sub[5,10].num+1.5}', '44.15'),
                 (r'{(name[5,10].round-1)%4}', '2'),
                 (r'{(name[5,10].round-1)/6}', '7.0'),
                 (r'{(name[5,10].round-1)/6^2}', '49.0'),
                 (r'{name[0,4]+path}', 'somepath'),
                 (r'{name[0,4]/path}', 'some/path'),
-                (r'{name[5,7].num+name[8,10]}', '107'),
+                (r'{name[5,7].num+name[8,10].num}', '107'),
                 (r'{2^3}', '8'),
                 (r'{-2^3}', '-8'),
                 ]
@@ -272,6 +272,17 @@ class TestExpressions(unittest.TestCase):
         for expr,expected in expressions:
             for source,dest in process(files, expr, ask_test):
                 self.assertEqual(expected, dest)
+
+    def test_counter(self):
+        expressions = [
+                (r'name+counter[10,2]', ['a10','b12']),
+                ]
+        files = list(resorter.utils.read_filenames(['a','b'], False))
+        for expr,expected in expressions:
+            result = process(files, expr, ask_test)
+            for e,r in zip(expected, result):
+                self.assertEqual(e,r[1])
+
 
 if __name__=='__main__':
     loglevel = logging.DEBUG

@@ -3,6 +3,8 @@ import re
 import time
 import logging
 import codecs
+import pathlib
+import resorter.utils
 
 class Module(object):
 
@@ -41,12 +43,20 @@ class Num(Module):
     @classmethod
     def functions(cls):
         return {
-            'round': {'func': cls.number, 'help': r'round a number. Argument: [precision]. Example: {size[k].round[1]}'},
-            'num': {'func': cls.number, 'help': r'convert string to an number. Argument: [precision]'},
-        }
+                'round': {'func': cls.round, 'help': r'round a number', 'args': ['precision'], 'example': '(len(path)/len(name)).round[1]'},
+                'num': {'func': cls.number, 'help': r'convert string to an number', 'args': ['precision'], 'example': 'name[4,6].num', 'source': 'doc_12.jpg'},
+                }
     @staticmethod
     def number(_, args):
-        n = (float if '.' in args[0] else int)(args[0])
+        if len(args) > 1: return round(_, args)
+        n = args[0]
+        n = (float if '.' in n else int)(n) if isinstance(n, str) else n
+        return n
+
+    @staticmethod
+    def round(_, args):
+        n = args[0]
+        n = (float if '.' in n else int)(n) if isinstance(n, str) else n
         p = int(args[1]) if len(args) > 1 else 0
         return round(n, p) if p else round(n)
 
@@ -54,11 +64,11 @@ class Conditions(Module):
     @classmethod
     def functions(cls):
         return {
-                'if': {'func': cls.eef, 'help': r'if-else condition. Arguments: [condition, true value, false value]. Example: {if(size>1000,"big","small")}'},
-                'any': {'func': cls.aany, 'help': r'true if any of arguments is true. Arguments: [conditions*]'},
-                'all': {'func': cls.aall, 'help': r'true if all of arguments are true. Arguments: [conditions*]'},
-                'in': {'func': cls.een, 'help': r'check agains a list of options. Arguments: [options]. Example: {if(exif_make.in("Canon","Nikon"),"Known", "Unknown")}'},
-                'not': {'func': cls.noot, 'help': r'negation. Arguments: [condition]. Example: {if(not(exif_make.in("Canon","Nikon")),"Known", "Unknown")}'},
+                'if': {'func': cls.eef, 'help': r'if-else condition', 'args': ['condition', 'true value', 'false value'], 'example': 'if(len(name)>8,"long","short")'},
+                'any': {'func': cls.aany, 'help': r'true if any of arguments is true', 'args': ['condition', '...']},
+                'all': {'func': cls.aall, 'help': r'true if all of arguments are true', 'args': ['condition', '...']},
+                'in': {'func': cls.een, 'help': r'check agains a list of options', 'args': ['option', '...'], 'example': 'ext.in(".ext",".xls")'},
+                'not': {'func': cls.noot, 'help': r'negation', 'args': ['condition'], 'example': 'not(ext==".jpg")'},
         }
 
     @staticmethod
@@ -83,15 +93,16 @@ class Text(Module):
     @classmethod
     def functions(cls):
         return {
-            'cap': {'func': cls.cap, 'help': r'capitalize. Example: {name.cap}'},
-            'low': {'func': cls.low, 'help': r'lower case. Example: {name.low}'},
-            'up': {'func': cls.up, 'help': r'upper case. Example: {name.up}'},
-            'title': {'func': cls.title, 'help': r'title case. Example: {name.title}'},
-            'replace': {'func': cls.replace, 'help': r"replace characters. Two arguments: [from,to]. Example: {name.replace[' ','_']}"},
-            'decode': {'func': cls.decode, 'help': r'decode to current locale. Argument: [source encoding]. Example: {name.decode[cp1251]}'},
-            'sub': {'func': cls.sub, 'help': r'substring. Argument: [from,to]. Example: {name.sub[0,4]}'},
-            'index': {'func': cls.index, 'help': r'position of a substring. Argument: [substring]. Example: {name.sub[0,name.index[_]]}'},
-            'len': {'func': cls.length, 'help': r'length of a substring. Example: name[5,len(name)]'},
+            'cap': {'func': cls.cap, 'help': r'capitalize', 'example': 'name.cap'},
+            'low': {'func': cls.low, 'help': r'lower case', 'example': 'name.low'},
+            'up': {'func': cls.up, 'help': r'upper case', 'example': 'name.up'},
+            'title': {'func': cls.title, 'help': r'title case', 'example': 'name.title'},
+            'replace': {'func': cls.replace, 'help': r'replace substrings', 'args': ['from','to'], 'example': "name.replace['am','ik']"},
+            #'decode': {'func': cls.decode, 'help': r'decode to current locale', 'args': ['source encoding'], 'example': 'name.decode["cp1252"]', 'source': 'd�j� vu'},
+            'sub': {'func': cls.sub, 'help': r'substring', 'argument': ['from', 'to'], 'example': 'name.sub[0,4]'},
+            'index': {'func': cls.index, 'help': r'position of a substring', 'argument': ['substring'], 'example': 'name.sub[0,name.index["e"]]'},
+            'len': {'func': cls.length, 'help': r'length of a substring', 'example': 'name[5,len(name)]'},
+            'str': {'func': cls.string, 'help': r'convert to string', 'example': 'len(name).str'},
         }
     
     @staticmethod
@@ -103,6 +114,10 @@ class Text(Module):
         if a is not None: result = s[:a] + result
         if b is not None: result = result + s[b:]
         return result
+
+    @staticmethod
+    def string(_, args):
+        return str(args[0])
 
     @staticmethod
     def sub(_, args):
@@ -147,7 +162,7 @@ class Counter(Module):
     @classmethod
     def functions(cls):
         return {
-            'counter': {'func': cls.counter, 'help': r'counting number. Arguments: [start,step]. Example: {nam}_{counter[100,10]}{ext}'}
+            'counter': {'func': cls.counter, 'help': r'counting number', 'args': ['start', 'step'], 'example': 'nam+"_"+counter[100,10].str+ext'}
         }
 
     @staticmethod
@@ -158,7 +173,8 @@ class Counter(Module):
                 Counter.count = args[1]
             if len(args) > 2:
                 Counter.step = args[2]
-        Counter.count += Counter.step
+        else:
+            Counter.count += Counter.step
         return Counter.count
 
 class FileInfo(Module):
@@ -166,15 +182,16 @@ class FileInfo(Module):
     @classmethod
     def functions(cls):
         return {
-            'name': {'func': cls.name, 'help': 'file name with extension, without path'},
-            'path': {'func': cls.path, 'help': 'file path without file name'},
-            'abspath': {'func': cls.abspath, 'help': 'absolute file path without file name'},
-            'ext': {'func': cls.ext, 'help': 'file extension with leading dot'},
-            'nam': {'func': cls.nam, 'help': 'file name without extension'},
-            'size': {'func': cls.size, 'help': r'file size in bytes. Argument: [metric prefix k/m/g/t/p]. Example: {size[m]}'},
-            'atime': {'func': cls.atime, 'help': r"file last access time. Argument: [python time format string]. Example: {atime['%Y']}"},
-            'ctime': {'func': cls.ctime, 'help': r"file creation time. Argument: [python time format string]. Example: {ctime['%Y']}"},
-            'mtime': {'func': cls.mtime, 'help': r"file last modification time. Argument: [python time format string]. Example: {mtime['%Y']}"},
+                'name': {'func': cls.name, 'help': 'file name with extension, without path', 'example': 'name'},
+                'path': {'func': cls.path, 'help': 'file path without file name', 'args': ['last parent index'], 'example': 'path[2]', 'source': 'a/b/c/name.ext'},
+                'parent': {'func': cls.path, 'help': 'file path without file name', 'args': ['parent index'], 'example': 'parent[1]'},
+                'abspath': {'func': cls.abspath, 'help': 'absolute file path without file name', 'example': 'abspath'},
+                'ext': {'func': cls.ext, 'help': 'file extension with leading dot', 'example': 'ext'},
+                'nam': {'func': cls.nam, 'help': 'file name without extension', 'example': 'nam'},
+                'size': {'func': cls.size, 'help': r'file size in bytes', 'args': ['metric prefix k/m/g/t/p'], 'example': 'size[m]', 'output': 42},
+                'atime': {'func': cls.atime, 'help': r'file last access time', 'args': ['python time format string'], 'example': "atime['%Y']", 'output': '2019'},
+                'ctime': {'func': cls.ctime, 'help': r'file creation time', 'args': ['python time format string'], 'example': "ctime['%Y']", 'output': '2019'},
+                'mtime': {'func': cls.mtime, 'help': r'file last modification time', 'args': ['python time format string'], 'example': "mtime['%Y']", 'output': '2019'},
         }
 
     @classmethod
@@ -189,7 +206,18 @@ class FileInfo(Module):
         return Module.slice(os.path.abspath(os.path.dirname(args[0])), Module.range(args[1:]))
     @staticmethod
     def path(_, args):
-        return Module.slice(os.path.dirname(args[0]), Module.range(args[1:]))
+        if len(args)>1:
+            p = os.sep.join(pathlib.PurePath(args[0]).parts[-args[1]-1:-1])
+        else:
+            p = os.path.dirname(args[0])
+        return p
+    @staticmethod
+    def parent(_, args):
+        if len(args)>1:
+            p = pathlib.PurePath(args[0]).parts[-args[1]-1]
+        else:
+            p = os.path.basename(os.path.dirname(args[0]))
+        return p
     @staticmethod
     def ext(_, args):
         _, ext = os.path.splitext(args[0])
@@ -231,16 +259,30 @@ class FileInfo(Module):
 MODULES=[Text, Num, Counter, FileInfo, Conditions]
 FUNCTIONS={}
 
+def example(f):
+    source = f.get('source', 'some/path/name.ext')
+    args = f.get('args', None)
+    text = ''
+    if args: text += f'. Arguments: {args}'
+    ex = f.get('example', None)
+    if ex:
+        result = f.get('output', None) or resorter.utils.Expression(ex, FUNCTIONS).calc(source)
+        text += f'. Example: {source} -> {ex} -> {result}'
+    return text
+
 def update():
     logging.debug('registering modules')
     for m in MODULES:
         logging.debug('... {0} ({1})'.format(m.__name__, ', '.join(m.functions())))
         FUNCTIONS.update(m.functions())
 
-def list_functions():
+def list_functions(verbose):
     for m in MODULES:
         print('Module {0}:'.format(m.__name__))
         for k,v in m.functions().items():
-            print('\t{0} - {1}'.format(k, v['help']))
+            text = f'\t{k} - {v["help"]}'
+            if verbose:
+                text += example(v)
+            print(text)
         print()
 

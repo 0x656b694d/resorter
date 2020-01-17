@@ -26,7 +26,8 @@ def parse_args():
     parser.add_argument('ACTION', default='filter', nargs='?',
                         help='action to be executed over input files ({0})'.format(', '.join(actions.keys())))
     parser.add_argument('EXPRESSION', default=['./name'], nargs='*',
-                        help='specify the expression to format the destination or a @file name. Default: name')
+                        help='specify the expression to format the destination or a @file name. Default: name'
+                        'Use functions to build the expression. Available functions with examples can be listed with `--list-functions -v`')
 
     parser.add_argument('-f', '--from', dest='input', nargs='?', default='.', #sys.stdin,
                         help='read file names from a directory, a file. Default: stdin')
@@ -37,12 +38,17 @@ def parse_args():
     parser.add_argument('-if', '--include', metavar='EXPR', dest='include',
                         help=r'expression for the input files to be included')
 
+    parser.add_argument('-c', '--custom', metavar='SCRIPT', dest='custom', action='append',
+                        help=r'custom functions. The SCRIPT name without extension to be used in expressions. '
+                             r'The SCRIPT will be provided with the source file path and other parameters via the command line arguments. '
+                             r'The SCRIPT should return the new path')
+
     parser.add_argument('-s', '--silent', dest='silent', action='store_const',
                         const=True, default=False,
                         help='be silent')
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_const',
                         const=True, default=False,
-                        help='be verbose. Include arguments and examples to the --list-functions output')
+                        help='be verbose. Include arguments and examples to the `--list-functions` output')
     parser.add_argument('-g', '--debug', dest='debug', action='store_const',
                         const=True, default=False,
                         help='print debug messages')
@@ -64,7 +70,7 @@ def parse_args():
     parser.add_argument('--version', action='version', version='%(prog)s '+VERSION)
     parser.add_argument('--list-functions', dest='list_functions', action='store_const',
                         const=True, default=False,
-                        help='list available functions to use in EXPR')
+                        help='list available functions to use in EXPR. Add `-v` to see the functions arguments and examples')
 
     return parser.parse_args()
 
@@ -73,10 +79,11 @@ def ask_cli(msg, opts, default=None):
 
     question = '{0} {1}? [{2}] '.format(msg, '/'.join(opts.keys()), '/'.join(['*'+v[0] if v[0] == default else v[0] for v in opts.values()]) )
     while not [ k for k, v in opts.items() if answer and answer in v ]:
-        answer = input(question)
+        print(question, file=sys.stderr, end='')
+        answer = input()
         if default and not answer:
             answer = default
-            print(answer)
+            print(answer, file=sys.stderr)
             break
     logging.debug(f'answer: {answer}')
     return answer
@@ -95,6 +102,9 @@ def main():
     logging.basicConfig(
         format='%(levelname)s:%(module)s.%(funcName)s: %(message)s', level=loglevel)
     
+    if args.custom:
+        resorter.modules.append(args.custom)
+
     resorter.modules.update()
 
     if args.list_functions:
@@ -130,7 +140,7 @@ def main():
             question = ('dry ' if args.dry_run else '') + f'{args.ACTION}: {s} -> {d}'
             logging.debug(question)
             if ask:
-                print(question)
+                print(question, file=sys.stderr)
                 options = {'Confirm': 'cCyY', 'Ignore': 'iInN', 'Quit': 'qQxX'}
                 answer = ask('', options , 'c')
                 if answer in options['Ignore']:
@@ -138,7 +148,7 @@ def main():
                 elif answer in options['Quit']:
                     break
             elif args.verbose:
-                print(question)
+                print(question, file=sys.stderr)
             action(s, d, args.dry_run)
         except resorter.utils.FuncError as e:
             logging.error(f'Exception: {e}')

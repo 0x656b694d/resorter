@@ -1,5 +1,6 @@
 import shutil
 import os
+import shlex
 
 def action_copy(source, dst, dry=False):
     if dry:
@@ -26,11 +27,11 @@ def action_move(source, dst, dry=False):
         pass
 
 def action_filter(source, dst, dry=False):
-    print(f'{source}')
+    print(shlex.quote(source))
 
 def action_print(source, dst, dry=False):
     if source != dst:
-        print(' '.join(os.path.normcase(filename).replace(' ', '\\ ') for filename in (source, dst)))
+        print(shlex.quote(source), shlex.quote(dst), sep=' ')
 
 ACTIONS = {
         'copy':  {'func': action_copy,  'help':'copy input file to the computed location'},

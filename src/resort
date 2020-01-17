@@ -10,7 +10,8 @@ import resorter.utils
 import resorter.actions
 import resorter.modules
 
-import resorter.images
+import resorter.image_exif
+import resorter.image
 import resorter.audio
 import resorter.media
 

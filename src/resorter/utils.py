@@ -14,11 +14,11 @@ class PathEntry(object): # DirEntry alike
 def read_filenames(source, recursive):
     if isinstance(source, str): # dir
         logging.info(f'scanning directory {source}')
-        with os.scandir(source) as it:
+        with os.scandir(os.fsencode(source)) as it:
             for entry in it:
                 if not entry.is_dir():
                     logging.info(f'found {entry.path}')
-                    yield entry.path
+                    yield os.fsdecode(entry.path)
                 elif recursive:
                     logging.debug(f'entering directory {entry.path}')
                     yield from read_filenames(entry.path, recursive)
@@ -192,7 +192,8 @@ class Expression(object):
                     a = (float if '.' in a else int)(a)
                 result.append(-a)
             elif kind == 'OP' and len(result) < 2:
-                result.append(value)
+                b = callf(result.pop())
+                result.append(value + b)
             elif kind == 'OP' and value == '.':
                 b = result.pop()
                 a = result.pop()

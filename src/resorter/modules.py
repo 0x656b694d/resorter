@@ -4,6 +4,7 @@ import time
 import logging
 import codecs
 import pathlib
+import subprocess
 import resorter.utils
 
 class Module(object):
@@ -98,7 +99,6 @@ class Text(Module):
             'up': {'func': cls.up, 'help': r'upper case', 'example': 'name.up'},
             'title': {'func': cls.title, 'help': r'title case', 'example': 'name.title'},
             'replace': {'func': cls.replace, 'help': r'replace substrings', 'args': ['from','to'], 'example': "name.replace['am','ik']"},
-            #'decode': {'func': cls.decode, 'help': r'decode to current locale', 'args': ['source encoding'], 'example': 'name.decode["cp1252"]', 'source': 'd�j� vu'},
             'sub': {'func': cls.sub, 'help': r'substring', 'argument': ['from', 'to'], 'example': 'name.sub[0,4]'},
             'index': {'func': cls.index, 'help': r'position of a substring', 'argument': ['substring'], 'example': 'name.sub[0,name.index["e"]]'},
             'len': {'func': cls.length, 'help': r'length of a substring', 'example': 'name[5,len(name)]'},
@@ -256,7 +256,22 @@ class FileInfo(Module):
         t = time.localtime(s.st_ctime)
         return time.strftime('%d-%b-%Y %H-%M-%S' if len(args)<2 else args[1], t)
 
-MODULES=[Text, Num, Counter, FileInfo, Conditions]
+class Custom(Module):
+    
+    funcs = {}
+
+    @classmethod
+    def functions(cls):
+        return cls.funcs
+
+    @staticmethod
+    def call(key, args):
+        script = Custom.funcs[key]['help']
+        logging.debug(f'calling {key}: {script} {args}')
+        p = subprocess.run([script]+[os.fsencode(a) for a in args], stdout=subprocess.PIPE, check=True)# python 3.8: capture_output=True)
+        return p.stdout.decode().replace('\n', '').replace('\r', '')
+
+MODULES=[Text, Num, Counter, FileInfo, Conditions, Custom]
 FUNCTIONS={}
 
 def example(f):
@@ -276,9 +291,17 @@ def update():
         logging.debug('... {0} ({1})'.format(m.__name__, ', '.join(m.functions())))
         FUNCTIONS.update(m.functions())
 
+def append(scripts):
+    for script in scripts:
+        name, _ = os.path.splitext(os.path.basename(script))
+        logging.debug(f'custom script {name}: {script}')
+        Custom.funcs[name] = {'func': Custom.call, 'help': script}
+
 def list_functions(verbose):
     for m in MODULES:
-        print('Module {0}:'.format(m.__name__))
+        if not m.functions():
+            continue
+        print(m.__name__)
         for k,v in m.functions().items():
             text = f'\t{k} - {v["help"]}'
             if verbose:

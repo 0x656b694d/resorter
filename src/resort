@@ -14,6 +14,8 @@ import resorter.image
 import resorter.audio
 import resorter.media
 
+import resorter.gpx
+
 VERSION='0.1.0'
 
 def parse_args():
@@ -31,45 +33,41 @@ def parse_args():
 
     parser.add_argument('-f', '--from', dest='input', nargs='?', default='.', #sys.stdin,
                         help='read file names from a directory, a file. Default: stdin')
-    parser.add_argument('-r', '--recursive', dest='recursive', action='store_const',
-                        const=True, default=False,
+    parser.add_argument('-r', '--recursive', dest='recursive', action='store_true',
                         help='scan directories recursively')
 
     parser.add_argument('-if', '--include', metavar='EXPR', dest='include',
                         help=r'expression for the input files to be included')
+
+    parser.add_argument('-S', '--sort', metavar='EXPR', dest='sort',
+                        help=r'sort by EXPR. Example: `name`')
+    parser.add_argument('-R', '--reverse', dest='reverse', action='store_true',
+                        help=r'reverse sort order, if sorting is requested')
 
     parser.add_argument('-c', '--custom', metavar='SCRIPT', dest='custom', action='append',
                         help=r'custom functions. The SCRIPT name without extension to be used in expressions. '
                              r'The SCRIPT will be provided with the source file path and other parameters via the command line arguments. '
                              r'The SCRIPT should return the new path')
 
-    parser.add_argument('-s', '--silent', dest='silent', action='store_const',
-                        const=True, default=False,
+    parser.add_argument('-s', '--silent', dest='silent', action='store_true',
                         help='be silent')
-    parser.add_argument('-v', '--verbose', dest='verbose', action='store_const',
-                        const=True, default=False,
+    parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
                         help='be verbose. Include arguments and examples to the `--list-functions` output')
-    parser.add_argument('-g', '--debug', dest='debug', action='store_const',
-                        const=True, default=False,
+    parser.add_argument('-g', '--debug', dest='debug', action='store_true',
                         help='print debug messages')
 
-    parser.add_argument('-a', '--ask', dest='ask', action='store_const',
-                        const=True, default=False,
+    parser.add_argument('-a', '--ask', dest='ask', action='store_true',
                         help='ask confirmation on each file')
-    parser.add_argument('-p', '--stop', dest='stop', action='store_const',
-                        const=True, default=False,
+    parser.add_argument('-p', '--stop', dest='stop', action='store_true',
                         help='stop on first failure')
-    parser.add_argument('-i', '--ignore', dest='ignore', action='store_const',
-                        const=True, default=False,
+    parser.add_argument('-i', '--ignore', dest='ignore', action='store_true',
                         help='ignore failures')
 
-    parser.add_argument('--dry-run', dest='dry_run', action='store_const',
-                        const=True, default=False,
+    parser.add_argument('--dry-run', dest='dry_run', action='store_true',
                         help='don\'t perform actions, only print')
 
     parser.add_argument('--version', action='version', version='%(prog)s '+VERSION)
-    parser.add_argument('--list-functions', dest='list_functions', action='store_const',
-                        const=True, default=False,
+    parser.add_argument('--list-functions', dest='list_functions', action='store_true',
                         help='list available functions to use in EXPR. Add `-v` to see the functions arguments and examples')
 
     return parser.parse_args()
@@ -128,16 +126,20 @@ def main():
         filter_expr = resorter.utils.Expression(args.include, resorter.modules.FUNCTIONS)
         files = filter(filter_expr.calc, files)
     
-    action = resorter.actions.ACTIONS[args.ACTION]['func']
+    action = resorter.actions.ACTIONS[args.ACTION]['class']
 
     ask = ask_cli if args.ask else None
+    
+    action = action(args.dry_run)
+
+    if args.sort is not None:
+        sort_expr = resorter.utils.Expression(args.sort, resorter.modules.FUNCTIONS)
+        files = sorted(files, key=lambda k: sort_expr.calc(k), reverse=args.reverse)
 
     for source in files:
         try:
-            s = source
-
             d = ''.join(str(e.calc(source)) for e in expressions)
-            question = ('dry ' if args.dry_run else '') + f'{args.ACTION}: {s} -> {d}'
+            question = ('dry ' if args.dry_run else '') + f'{args.ACTION}: {source} -> {d}'
             logging.debug(question)
             if ask:
                 print(question, file=sys.stderr)
@@ -149,7 +151,7 @@ def main():
                     break
             elif args.verbose:
                 print(question, file=sys.stderr)
-            action(s, d, args.dry_run)
+            action.act(source, d)
         except resorter.utils.FuncError as e:
             logging.error(f'Exception: {e}')
             if loglevel == logging.DEBUG:
@@ -158,7 +160,7 @@ def main():
             args.silent or print(f"Error in function '{func.name}{func.args}: {e.exc}'.\nHelp: {func.help}\n", file=sys.stderr)
             if args.ignore:
                 args.silent or print(e, file=sys.stderr)
-            elif args.stop or ask_cli(f'Could not {args.ACTION} {s}.',
+            elif args.stop or ask_cli(f'Could not {args.ACTION} {source}.',
                     {'Quit': 'qQ', 'Ignore': 'iI'}, 'i') in 'qQ':
                 break
 
@@ -168,9 +170,11 @@ def main():
                 traceback.print_tb(sys.exc_info()[2])
             if args.ignore:
                 args.silent or print(e, file=sys.stderr)
-            elif args.stop or ask_cli(f'Could not {args.ACTION} {s}: {e!r}',
+            elif args.stop or ask_cli(f'Could not {args.ACTION} {source}: {e!r}',
                     {'Quit': 'qQ', 'Ignore': 'iI'}, 'i') in 'qQ':
                 break
+
+    action.finalize()
     return 0
 
 try:

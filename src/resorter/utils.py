@@ -191,6 +191,8 @@ class Expression(object):
                     a = str(a)
                     a = (float if '.' in a else int)(a)
                 result.append(-a)
+            elif kind == 'OP' and len(result) < 1:
+                result.append(value)
             elif kind == 'OP' and len(result) < 2:
                 b = callf(result.pop())
                 result.append(value + b)

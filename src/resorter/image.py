@@ -5,6 +5,7 @@ except:
     OK = False
 
 import datetime
+import logging
 import resorter.modules as modules
 
 EXIF_TAGS = {
@@ -19,6 +20,7 @@ EXIF_TAGS = {
   'flash': 0x9209,
   'redeye': 0x9209,
   'distance': 0x9206,
+  'gpstime': 0x8825,
 }
 
 FLASH = {
@@ -104,23 +106,28 @@ class ImageData(modules.Module):
     @staticmethod
     def parse_exif(key, value, args):
         if key == 'lat':
+            if not value: return None
             ref = value.get(1, 'N') # N/S
             coo = value.get(2, None)
             if coo is None: return coo
             d,m,s = coo
-            decimal = (d[0]/d[1])+(m[0]/m[1])/60.0+(s[0]/s[1])/3600.0
+            decimal = round((d[0]/d[1])+(m[0]/m[1])/60.0+(s[0]/s[1])/3600.0, 5)
             return decimal if ref == 'N' else -decimal
         elif key == 'lon':
+            if not value: return None
             ref = value.get(3, 'E') # E/W
             coo = value.get(4, None)
             if coo is None: return coo
             d,m,s = coo
-            decimal = (d[0]/d[1])+(m[0]/m[1])/60.0+(s[0]/s[1])/3600.0
+            decimal = round((d[0]/d[1])+(m[0]/m[1])/60.0+(s[0]/s[1])/3600.0, 5)
             return decimal if ref == 'E' else -decimal
         elif key == 'alt':
+            if not value: return None
+            logging.debug(value)
             ref = value.get(5, 0) # 1 - below sea level
             a = value.get(6, None)  #meters
             if a is None: return None
+            a = round(a[0]/a[1], 2)
             return -a if ref else e
         elif key == 'speed':
             ref = value.get(12, 'K') # K/M/N
@@ -133,11 +140,20 @@ class ImageData(modules.Module):
             return 'On' if value & 0x40 else 'Off'
         elif key == 'distance':
             return 'Inf' if value == 0xffffffff else 'Unknown' if value == 0 else value
+        elif key == 'gpstime':
+            if not value: return None
+            d = value.get(29, None)
+            if not d: return None
+            h, m, s = value.get(7, ([0,0])*3)
+            h = h[0]/h[1]
+            m = m[0]/m[1]
+            s = s[0]/s[1]
+            y,mon,d = d.split(':')
+            date = datetime.datetime(*(int(x) for x in [y, mon, d, h, m, s]))
+            return date.strftime(args[1]) if len(args) == 2 else date
         elif key == 'time':
             date = datetime.datetime.strptime(value, '%Y:%m:%d %H:%M:%S')
-            if len(args)>1:
-                return date.strftime(args[1])
-            return date.strftime('%d-%b-%Y.%H%M%S')
+            return date.strftime(args[1]) if len(args) == 2 else date
         if isinstance(value, str): return value.strip()
         return value
 

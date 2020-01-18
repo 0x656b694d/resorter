@@ -1,6 +1,6 @@
 import os
 import re
-import time
+from datetime import datetime
 import logging
 import codecs
 import pathlib
@@ -241,20 +241,22 @@ class FileInfo(Module):
         return s
 
     @staticmethod
+    def get_time(st_t, fmt):
+        t = datetime.fromtimestamp(st_t)
+        fmt = fmt[1] if len(fmt) == 2 else None
+        return t.strftime(fmt) if fmt else t
+
+    @staticmethod
     def atime(_, args):
-        s = FileInfo.cache(args[0])
-        t = time.localtime(s.st_atime)
-        return time.strftime('%d-%b-%Y %H-%M-%S' if len(args)<2 else args[1], t)
+        return FileInfo.get_time(FileInfo.cache(args[0]).st_atime, args)
+
     @staticmethod
     def mtime(_, args):
-        s = FileInfo.cache(args[0])
-        t = time.localtime(s.st_mtime)
-        return time.strftime('%d-%b-%Y %H-%M-%S' if len(args)<2 else args[1], t)
+        return FileInfo.get_time(FileInfo.cache(args[0]).st_mtime, args)
+
     @staticmethod
     def ctime(_, args):
-        s = FileInfo.cache(args[0])
-        t = time.localtime(s.st_ctime)
-        return time.strftime('%d-%b-%Y %H-%M-%S' if len(args)<2 else args[1], t)
+        return FileInfo.get_time(FileInfo.cache(args[0]).st_ctime, args)
 
 class Custom(Module):
     

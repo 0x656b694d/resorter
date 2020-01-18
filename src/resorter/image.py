@@ -69,6 +69,7 @@ class ImageData(modules.Module):
             cls.f = {
                 'image_width': {'func': ImageData.width, 'help': r'pixel width'},
                 'image_height': {'func': ImageData.height, 'help': r'pixel height'},
+                'exif': {'func': ImageData.exif, 'help': r'True if the file has exif data'},
             }
             cls.f.update(tags(cls))
             cls.ready = True
@@ -92,21 +93,23 @@ class ImageData(modules.Module):
     @staticmethod
     def exif(key, args):
         i = ImageData.cache(args[0])
+        if key=='exif':
+            return True if i else False
+        if i is None:
+            return None
         key = key[5:]
+        value = None
         if i:
             t = EXIF_TAGS.get(key, None)
             if t is not None:
                 v = i.getexif().get(t, None)
                 if v is not None:
                     value = ImageData.parse_exif(key, v, args)
-                    if value is not None:
-                        return value
-        return 'No'+key.capitalize()
+        return value
 
     @staticmethod
     def parse_exif(key, value, args):
         if key == 'lat':
-            if not value: return None
             ref = value.get(1, 'N') # N/S
             coo = value.get(2, None)
             if coo is None: return coo
@@ -114,7 +117,6 @@ class ImageData(modules.Module):
             decimal = round((d[0]/d[1])+(m[0]/m[1])/60.0+(s[0]/s[1])/3600.0, 5)
             return decimal if ref == 'N' else -decimal
         elif key == 'lon':
-            if not value: return None
             ref = value.get(3, 'E') # E/W
             coo = value.get(4, None)
             if coo is None: return coo
@@ -122,7 +124,6 @@ class ImageData(modules.Module):
             decimal = round((d[0]/d[1])+(m[0]/m[1])/60.0+(s[0]/s[1])/3600.0, 5)
             return decimal if ref == 'E' else -decimal
         elif key == 'alt':
-            if not value: return None
             logging.debug(value)
             ref = value.get(5, 0) # 1 - below sea level
             a = value.get(6, None)  #meters
@@ -141,7 +142,6 @@ class ImageData(modules.Module):
         elif key == 'distance':
             return 'Inf' if value == 0xffffffff else 'Unknown' if value == 0 else value
         elif key == 'gpstime':
-            if not value: return None
             d = value.get(29, None)
             if not d: return None
             h, m, s = value.get(7, ([0,0])*3)

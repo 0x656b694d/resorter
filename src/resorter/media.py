@@ -32,12 +32,11 @@ class Media(modules.Module):
             n = None
         else:
             n, prop = t
-        unknown = "Unknown"+prop.capitalize()
         for t in media.tracks:
             if t.track_id != n and t.track_type != n:
                 continue
-            return t.to_data().get(prop, unknown)
-        return unknown
+            return t.to_data().get(prop, None)
+        return None
 
 if OK:
     modules.MODULES.append(Media)

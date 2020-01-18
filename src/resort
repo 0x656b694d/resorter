@@ -134,7 +134,7 @@ def main():
 
     if args.sort is not None:
         sort_expr = resorter.utils.Expression(args.sort, resorter.modules.FUNCTIONS)
-        files = sorted(files, key=lambda k: sort_expr.calc(k), reverse=args.reverse)
+        files = sorted(files, key=lambda k: sort_expr.calc(k) or 0, reverse=args.reverse)
 
     for source in files:
         try:

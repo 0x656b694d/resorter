@@ -22,12 +22,16 @@ class Id3(modules.Module):
     
     @classmethod
     def open(cls, source):
-        return stagger.read_tag(source.path)
+        try:
+            return stagger.read_tag(source)
+        except stagger.errors.NoTagError:
+            return None
     
     @staticmethod
-    def tag(func, args):
+    def tag(key, args):
         id3 = Id3.cache(args[0])
-        return id3.__getattribute__(func.lstrip('id3_'))
+        if id3 is None: return None
+        return id3.__getattribute__(key.lstrip('id3_'))
 
 if OK:
     modules.MODULES.append(Id3)

@@ -44,7 +44,7 @@ def tokenize(expr, keywords):
             ('NUMBER',   r'\d+(\.\d*)?'),  # Integer or decimal number
             ('STRING',   r"'(?:[^'\\]|\\.)*'"), # 'Strings'
             ("STRING2",  r'"(?:[^"\\]|\\.)*"'), # "Strings"
-            ('ID',       r'[A-Za-z_]+'),   # Identifiers
+            ('ID',       r'[A-Za-z_0-9]+'),   # Identifiers
             ('OP',       r'[:+\-*/\^.,%]|\|\||&&|\||&|==?|<=|>=|<>|[<>]|!=|~='), # Arithmetic operators
             ('BRACKETS', r'[\(\)\[\]{}]'),   # Brackets
             ('SKIP',     r'[ \t]+'),       # Skip over spaces and tabs
@@ -85,57 +85,57 @@ OPS = [','] + LOGIC + COMP + ['+','-','|','--','^','/','*','&','%',':','.']
 BRACKETS = { '[': ']', '(': ')', '{': '}'}
 
 def polish(tokens):
-        result = []
-        ops_q = []
-        logging.debug('Polishing')
-        def pops(op):
-            if isinstance(op, Func):
-                return ['FUNC', op]
-            elif op == 'ARGS':
-                return [op, None]
-            else:
-                return ['OP', op]
-        prev = (None, None)
-        for kind, value in tokens:
-            if kind == 'OP':
-                if value == '-' and (prev[0] in [None, 'OP'] or prev[1] in BRACKETS.keys()):
-                    logging.debug(f'unary minus because {prev}')
-                    value = '--'
-                while len(ops_q):
-                    top = ops_q[-1]
-                    if isinstance(top, Func):
-                        result.append(['FUNC', ops_q.pop()])
-                    elif top == 'ARGS':
-                        result.append([ops_q.pop(), None])
-                    elif top in OPS and OPS.index(top) >= OPS.index(value):
-                        result.append(['OP', ops_q.pop()])
-                    else:
-                        break
+    result = []
+    ops_q = []
+    logging.debug('Polishing')
+    def pops(op):
+        if isinstance(op, Func):
+            return ['FUNC', op]
+        elif op == 'ARGS':
+            return [op, None]
+        else:
+            return ['OP', op]
+    prev = (None, None)
+    for kind, value in tokens:
+        if kind == 'OP':
+            if value == '-' and (prev[0] in [None, 'OP'] or prev[1] in BRACKETS.keys()):
+                logging.debug(f'unary minus because {prev}')
+                value = '--'
+            while len(ops_q):
+                top = ops_q[-1]
+                if isinstance(top, Func):
+                    result.append(['FUNC', ops_q.pop()])
+                elif top == 'ARGS':
+                    result.append([ops_q.pop(), None])
+                elif top in OPS and OPS.index(top) >= OPS.index(value):
+                    result.append(['OP', ops_q.pop()])
+                else:
+                    break
+            ops_q.append(value)
+        elif kind == 'FUNC':
+            ops_q.append(Func(value))
+        elif kind == 'BRACKETS':
+            if value in BRACKETS.keys():
+                if len(ops_q) and isinstance(ops_q[-1], Func):
+                    ops_q.append('ARGS')
                 ops_q.append(value)
-            elif kind == 'FUNC':
-                ops_q.append(Func(value))
-            elif kind == 'BRACKETS':
-                if value in BRACKETS.keys():
-                    if len(ops_q) and isinstance(ops_q[-1], Func):
-                        ops_q.append('ARGS')
-                    ops_q.append(value)
-                if value in BRACKETS.values():
-                    while len(ops_q):
-                        v = ops_q.pop()
-                        if v in BRACKETS.keys():
-                            if BRACKETS[v] == value:
-                                break
-                            else:
-                                raise RuntimeError(f'Bracket {v!r} mismatch')
-                        result.append(pops(v))
-            else:
-                result.append([kind, value])
-            prev = (kind, value)
-        ops_q.reverse()
-        for op in ops_q:
-            result.append(pops(op))
-        logging.debug(f'Polish notation: {result!r}')
-        return result
+            if value in BRACKETS.values():
+                while len(ops_q):
+                    v = ops_q.pop()
+                    if v in BRACKETS.keys():
+                        if BRACKETS[v] == value:
+                            break
+                        else:
+                            raise RuntimeError(f'Bracket {v!r} mismatch')
+                    result.append(pops(v))
+        else:
+            result.append([kind, value])
+        prev = (kind, value)
+    ops_q.reverse()
+    for op in ops_q:
+        result.append(pops(op))
+    logging.debug(f'Polish notation: {result!r}')
+    return result
 
 class FuncError(Exception):
     def __init__(self, exc, funcb):
@@ -153,6 +153,7 @@ class FuncB(object):
         return f'Function_{self.name}({self.args})'
 
     def call(self):
+        if self.args[0] is None: return None
         try:
             v = self.func(self.name, self.args)
             logging.debug(f'{self.name}({self.args!r}) returned {v}')

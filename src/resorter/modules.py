@@ -104,16 +104,6 @@ class Text(Module):
             'len': {'func': cls.length, 'help': r'length of a substring', 'example': 'name[5,len(name)]'},
             'str': {'func': cls.string, 'help': r'convert to string', 'example': 'len(name).str'},
         }
-    
-    @staticmethod
-    def change(args, s, func):
-        logging.debug(f'changing text in {s} at {args!r}')
-        if args is None: return func(s)
-        a,b = Module.range(args)
-        result = func(s[a:b])
-        if a is not None: result = s[:a] + result
-        if b is not None: result = result + s[b:]
-        return result
 
     @staticmethod
     def string(_, args):
@@ -121,8 +111,8 @@ class Text(Module):
 
     @staticmethod
     def sub(_, args):
-        logging.debug(f'{args}')
         return Module.slice(args[0], Module.range(args[1:]))
+
     @staticmethod
     def index(_, args):
         result = -1

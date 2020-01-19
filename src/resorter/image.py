@@ -79,7 +79,8 @@ class ImageData(modules.Module):
     def open(cls, f):
         try:
             return Image.open(f)
-        except:
+        except Exception as e:
+            logging.warning(e)
             return None
 
     @staticmethod
@@ -114,14 +115,14 @@ class ImageData(modules.Module):
             coo = value.get(2, None)
             if coo is None: return coo
             d,m,s = coo
-            decimal = round((d[0]/d[1])+(m[0]/m[1])/60.0+(s[0]/s[1])/3600.0, 5)
+            decimal = round((d[0]/d[1])+(m[0]/m[1])/60.0+(s[0]/s[1])/3600.0, 6)
             return decimal if ref == 'N' else -decimal
         elif key == 'lon':
             ref = value.get(3, 'E') # E/W
             coo = value.get(4, None)
             if coo is None: return coo
             d,m,s = coo
-            decimal = round((d[0]/d[1])+(m[0]/m[1])/60.0+(s[0]/s[1])/3600.0, 5)
+            decimal = round((d[0]/d[1])+(m[0]/m[1])/60.0+(s[0]/s[1])/3600.0, 6)
             return decimal if ref == 'E' else -decimal
         elif key == 'alt':
             logging.debug(value)

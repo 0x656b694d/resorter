@@ -13,16 +13,22 @@ class Action(object):
     def finalize(self):
         pass
 
+def flat(args, none=None):
+    result = []
+    for d in args:
+        if d is None:
+            if none is not None:
+                result.append(none)
+        elif isinstance(d, list):
+            result.extend(d)
+        else:
+            result.append(d)
+    return result
+
 class Copy(Action):
 
     def act(self, source, dst):
-        row = []
-        for d in dst:
-            if isinstance(d, list):
-                row.extend(d)
-            else:
-                row.append(d)
-        row = ' '.join(row)
+        row = ' '.join(flat(dst, '?'))
         if self.dry:
             if not os.path.exists(source):
                 raise RuntimeError(f'Source file not found: {source}')
@@ -36,13 +42,7 @@ class Copy(Action):
 
 class Move(Action):
     def act(self, source, dst):
-        row = []
-        for d in dst:
-            if isinstance(d, list):
-                row.extend(d)
-            else:
-                row.append(d)
-        row = ' '.join(row)
+        row = ' '.join(flat(dst, '?'))
 
         if self.dry:
             if not os.path.exists(source):
@@ -61,13 +61,7 @@ class Filter(Action):
 
 class Print(Action):
     def act(self, source, dst):
-        row = []
-        for d in dst:
-            if isinstance(d, list):
-                row.extend(d)
-            else:
-                row.append(d)
-        row = ' '.join(row)
+        row = ' '.join(flat(dst, '?'))
         if source != row:
             print(shlex.quote(source), shlex.quote(row), sep=' ')
 
@@ -76,7 +70,7 @@ class Csv(Action):
         self.writer = csv.writer(sys.stdout)
         self.writer.writerow(['file name']+[e.expr for e in expressions])
     def act(self, source, dst):
-        row = [source]
+        row = [source] + flat(dst, '')
         for d in dst:
             if isinstance(d, list):
                 row.extend(d)

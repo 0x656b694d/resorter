@@ -164,6 +164,7 @@ class FuncB(object):
 class Expression(object):
     def __init__(self, expr, keywords):
         self.keywords = keywords
+        self.expr = expr
         tokens = tokenize(expr, keywords.keys())
         self.polish = polish(tokens)
         # Translate ID to module function

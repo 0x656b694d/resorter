@@ -90,6 +90,22 @@ class Conditions(Module):
     def noot(_, args):
         return not args[-1]
 
+class List(Module):
+    @classmethod
+    def functions(cls):
+        return {
+            'join': {'func': cls.join, 'help': r'join list', 'args': ['separator'], 'example': '(nam,ext).join("-")'},
+            'split': {'func': cls.split, 'help': r'split string', 'args': ['separator'], 'example': 'path.split["/"]'},
+            }
+    @staticmethod
+    def join(_, args):
+        sep = args[1] if len(args) == 2 else '-'
+        return sep.join(str(a) for a in args[0])
+    @staticmethod
+    def split(_, args):
+        sep = args[1] if len(args) == 2 else os.sep
+        return args[0].split(sep)
+
 class Text(Module):
     @classmethod
     def functions(cls):
@@ -263,7 +279,7 @@ class Custom(Module):
         p = subprocess.run([script]+[os.fsencode(a) for a in args], stdout=subprocess.PIPE, check=True)# python 3.8: capture_output=True)
         return p.stdout.decode().replace('\n', '').replace('\r', '')
 
-MODULES=[Text, Num, Counter, FileInfo, Conditions, Custom]
+MODULES=[Text, Num, List, Counter, FileInfo, Conditions, Custom]
 FUNCTIONS={}
 
 def example(f):

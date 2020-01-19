@@ -156,7 +156,7 @@ class TestPolish(unittest.TestCase):
 def process(files, expr, ask):
     expr = resorter.utils.Expression(expr, resorter.modules.FUNCTIONS)
     for source in files:
-        yield (source, str(expr.calc(source)))
+        yield (source, expr.calc(source))
     return True
 
 class TestExpressions(unittest.TestCase):
@@ -190,6 +190,19 @@ class TestExpressions(unittest.TestCase):
                 self.assertEqual(source, name)
                 self.assertEqual(expected, dest)
 
+    def test_list(self):
+        name = 'some/path/filename.ext'
+        expressions = [
+                (r'path.split', ['some','path']),
+                (r'path.split["e"]', ['som','/path']),
+                (r'(path,ext).join["x"]', 'some/pathx.ext'),
+                (r'(path,ext).join', 'some/path-.ext'),
+                ]
+        files = list(resorter.utils.read_filenames([name], False))
+        for expr,expected in expressions:
+            for source,dest in process(files, expr, ask_test):
+                self.assertEqual(source, name)
+                self.assertEqual(expected, dest)
     def test_text(self):
         name = 'some_PATH string'
         expressions = [
@@ -202,8 +215,8 @@ class TestExpressions(unittest.TestCase):
                 (r'{name.sub[4]}', '_'),
                 (r'{name.replace[" ","_"]}', 'some_PATH_string'),
                 (r'{name.replace["PATH","xxx"]}', 'some_xxx string'),
-                (r'{name.index["PATH"]}', '5'),
-                (r'{name.len}', str(len(name))),
+                (r'{name.index["PATH"]}', 5),
+                (r'{name.len}', len(name)),
                 (r'{name[len(name)-6, len(name)]}', 'string'),
                 (r'name:len+xx', name+str(len(name))+'xx'),
                 (r'/name', '/'+name),
@@ -217,20 +230,20 @@ class TestExpressions(unittest.TestCase):
     def test_num(self):
         name = 'path/some_42.65_'
         expressions = [
-                (r'{name.index[4]}', '5'),
+                (r'{name.index[4]}', 5),
                 (r'{name.sub[name.index[4]]}', '4'),
-                (r'{name.sub[5,10].round}', '43'),
-                (r'{name.sub[5,10].round[2]}', '42.65'),
-                (r'{name.sub[5,10].num-1.5}', '41.15'),
-                (r'{name.sub[5,10].num+1.5}', '44.15'),
-                (r'{(name[5,10].round-1)%4}', '2'),
-                (r'{(name[5,10].round-1)/6}', '7.0'),
-                (r'{(name[5,10].round-1)/6^2}', '49.0'),
+                (r'{name.sub[5,10].round}', 43),
+                (r'{name.sub[5,10].round[2]}', 42.65),
+                (r'{name.sub[5,10].num-1.5}', 41.15),
+                (r'{name.sub[5,10].num+1.5}', 44.15),
+                (r'{(name[5,10].round-1)%4}', 2),
+                (r'{(name[5,10].round-1)/6}', 7.0),
+                (r'{(name[5,10].round-1)/6^2}', 49.0),
                 (r'{name[0,4]+path}', 'somepath'),
                 (r'{name[0,4]/path}', 'some/path'),
-                (r'{name[5,7].num+name[8,10].num}', '107'),
-                (r'{2^3}', '8'),
-                (r'{-2^3}', '-8'),
+                (r'{name[5,7].num+name[8,10].num}', 107),
+                (r'{2^3}', 8),
+                (r'{-2^3}', -8),
                 ]
         files = list(resorter.utils.read_filenames([name], False))
         for expr,expected in expressions:
@@ -241,14 +254,14 @@ class TestExpressions(unittest.TestCase):
     def test_conditions(self):
         name = 'Hello'
         expressions = [
-                (r'{name.in("Goodbye","Hello","Hi")}', 'True'),
-                (r'{name.in("Goodbye","Hi")}', 'False'),
-                (r'{all("Goodbye",name=="Hello")}', 'True'),
-                (r'{any("Goodbye",name=="xx")}', 'True'),
-                (r'{not(name=="xx")}', 'True'),
-                (r'{if(name=="Hello", 12, 14)}', '12'),
-                (r'{if(name~="H.l+o", 12, 14)}', '12'),
-                (r'{if(name=="Hlo", 12, 14)}', '14'),
+                (r'{name.in("Goodbye","Hello","Hi")}', True),
+                (r'{name.in("Goodbye","Hi")}', False),
+                (r'{all("Goodbye",name=="Hello")}', True),
+                (r'{any("Goodbye",name=="xx")}', True),
+                (r'{not(name=="xx")}', True),
+                (r'{if(name=="Hello", 12, 14)}', 12),
+                (r'{if(name~="H.l+o", 12, 14)}', 12),
+                (r'{if(name=="Hlo", 12, 14)}', 14),
                 ]
         files = list(resorter.utils.read_filenames([name], False))
         for expr,expected in expressions:
@@ -258,16 +271,16 @@ class TestExpressions(unittest.TestCase):
 
     def test_comp(self):
         expressions = [
-                (r'{2=3}', 'False'),
-                (r'{2=2}', 'True'),
-                (r'{2<>2}', 'False'),
-                (r'{2!=4}', 'True'),
-                (r'{2>=2}', 'True'),
-                (r'{2>=1}', 'True'),
-                (r'{2<=2}', 'True'),
-                (r'{2<=3}', 'True'),
-                (r'{2>1}', 'True'),
-                (r'{2<1}', 'False'),
+                (r'{2=3}', False),
+                (r'{2=2}', True),
+                (r'{2<>2}', False),
+                (r'{2!=4}', True),
+                (r'{2>=2}', True),
+                (r'{2>=1}', True),
+                (r'{2<=2}', True),
+                (r'{2<=3}', True),
+                (r'{2>1}', True),
+                (r'{2<1}', False),
                 ]
         files = list(resorter.utils.read_filenames(['name'], False))
         for expr,expected in expressions:

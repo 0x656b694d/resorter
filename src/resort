@@ -130,7 +130,7 @@ def main():
 
     ask = ask_cli if args.ask else None
     
-    action = action(args.dry_run)
+    action = action(expressions, args.dry_run)
 
     if args.sort is not None:
         sort_expr = resorter.utils.Expression(args.sort, resorter.modules.FUNCTIONS)
@@ -138,7 +138,7 @@ def main():
 
     for source in files:
         try:
-            d = ''.join(str(e.calc(source)) for e in expressions)
+            d = [e.calc(source) for e in expressions]
             question = ('dry ' if args.dry_run else '') + f'{args.ACTION}: {source} -> {d}'
             logging.debug(question)
             if ask:

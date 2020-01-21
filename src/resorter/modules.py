@@ -119,6 +119,7 @@ class Text(Module):
             'index': {'func': cls.index, 'help': r'position of a substring', 'argument': ['substring'], 'example': 'name.sub[0,name.index["e"]]'},
             'len': {'func': cls.length, 'help': r'length of a substring', 'example': 'name[5,len(name)]'},
             'str': {'func': cls.string, 'help': r'convert to string', 'example': 'len(name).str'},
+            'decode': {'func': cls.decode, 'help': r'decode from encoding', 'args': ['encoding'], 'source': bytes('café', 'cp1252'), 'example': 'name.decode("cp1252")' },
         }
 
     @staticmethod
@@ -128,6 +129,14 @@ class Text(Module):
     @staticmethod
     def sub(_, args):
         return Module.slice(args[0], Module.range(args[1:]))
+
+    @staticmethod
+    def decode(_, args):
+        if isinstance(args[0], bytes):
+            b = args[0]
+        else:
+            b = bytes([ord(ch) for ch in args[0]])
+        return b.decode(args[1])
 
     @staticmethod
     def index(_, args):
@@ -153,9 +162,6 @@ class Text(Module):
     @staticmethod
     def replace(_, args):
         return args[0].replace(*args[1:])
-    @staticmethod
-    def decode(_, args):
-        return codecs.decode(*args)
 
     @staticmethod
     def length(_, args):

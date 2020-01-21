@@ -202,8 +202,11 @@ class Expression(object):
                 b = result.pop()
                 a = result.pop()
                 logging.debug(f'appending left op to {b}')
-                b.args[0] = callf(a)
-                result.append(callf(b))
+                if isinstance(b, FuncB):
+                    b.args[0] = callf(a)
+                    result.append(callf(b))
+                else:
+                    result.append(a+'.'+b)
             elif kind == 'OP':
                 b = callf(result.pop())
                 a = callf(result.pop())

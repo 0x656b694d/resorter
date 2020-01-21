@@ -4,6 +4,7 @@ import shlex
 import csv
 import sys
 import logging
+from zipfile import ZipFile
 
 class Action(object):
     def __init__(self, expressions, dry=False):
@@ -55,6 +56,34 @@ class Move(Action):
         else:
             pass
 
+class Zip(Action):
+    def __init__(self, expressions, dry=False):
+        if len(expressions) < 2:
+            raise RuntimeError('zip action requires two expressions: for computing the zip file name and the path in the archive.'
+                               ' Ex.: ... zip archive.zip docs/name')
+        self.files = {}
+        self.dry = dry
+
+    def act(self, source, dst):
+        f = self.files.get(dst[0], None)
+        if f is None:
+            print(dst[0])
+            if self.dry:
+                f = dst[0]
+            else:
+                f = ZipFile(dst[0], 'w')
+                logging.info(f'new zip file {dst[0]}')
+            self.files[dst[0]] = f
+        name = '/'.join(flat(dst[1:], '?')) if len(dst>1) else os.pathsource.lstrip(os.sep)
+        if self.dry:
+            print(f'{source} -> {dst[0]}:{name}')
+        else:
+            logging.debug(f'Archiving {source} to {dst[0]}:{name}')
+            f.write(source, arcname=name)
+    
+    def finalize(self):
+        pass
+
 class Filter(Action):
     def act(self, source, dst):
         print(shlex.quote(source))
@@ -70,14 +99,8 @@ class Csv(Action):
         self.writer = csv.writer(sys.stdout)
         self.writer.writerow(['file name']+[e.expr for e in expressions])
     def act(self, source, dst):
-        row = [source] + flat(dst, '')
-        for d in dst:
-            if isinstance(d, list):
-                row.extend(d)
-            else:
-                row.append(d)
-        logging.debug(f'{row}')
-        self.writer.writerow(row)
+        self.writer.writerow([source] + flat(dst, ''))
+        
 
 ACTIONS = {
         'copy':  {'class': Copy,  'help':'copy input file to the computed location'},
@@ -85,4 +108,5 @@ ACTIONS = {
         'filter': {'class': Filter, 'help':'print the source paths only'},
         'print': {'class': Print, 'help':'print the source and the destination paths if they differ'},
         'csv': {'class': Csv, 'help':'output source and destination in the CSV format'},
+        'zip': {'class': Zip, 'help':'archive source to a zip file. First expression computes the zip file name, second - the path inside archive'},
         }

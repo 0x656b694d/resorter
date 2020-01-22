@@ -6,7 +6,7 @@ import sys
 import logging
 from zipfile import ZipFile
 
-import resorter.modules
+from resorter.modules.modules import Set
 
 class Action(object):
     def __init__(self, expressions, dry=False):
@@ -108,7 +108,7 @@ class Csv(Action):
 
 class Fix(Action):
     def __init__(self, expressions, dry=False):
-        resorter.modules.Set.allowed = not dry
+        Set.allowed = not dry
 
 ACTIONS = {
         'copy':  {'class': Copy,  'help':'copy input file to the computed location'},

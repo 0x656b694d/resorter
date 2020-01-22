@@ -3,7 +3,7 @@ import os
 import logging
 
 import resorter.utils
-import resorter.modules
+from resorter.modules import modules
 
 def ask_test(msg, opts, default=None):
     return default
@@ -154,7 +154,7 @@ class TestPolish(unittest.TestCase):
             self.assertEqual(expected, polish)
 
 def process(files, expr, ask):
-    expr = resorter.utils.Expression(expr, resorter.modules.FUNCTIONS)
+    expr = resorter.utils.Expression(expr, modules.FUNCTIONS)
     for source in files:
         yield (source, expr.calc(source))
     return True
@@ -304,4 +304,4 @@ if __name__=='__main__':
         format='%(levelname)s:%(module)s.%(funcName)s: %(message)s', level=loglevel)
     unittest.main()
 
-resorter.modules.update()
+modules.update()

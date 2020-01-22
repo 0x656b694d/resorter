@@ -6,6 +6,8 @@ import sys
 import logging
 from zipfile import ZipFile
 
+import resorter.modules
+
 class Action(object):
     def __init__(self, expressions, dry=False):
         self.dry = dry
@@ -96,11 +98,17 @@ class Print(Action):
 
 class Csv(Action):
     def __init__(self, expressions, dry=False):
-        self.writer = csv.writer(sys.stdout)
-        self.writer.writerow(['file name']+[e.expr for e in expressions])
+        self.dry = dry
+        if not dry:
+            self.writer = csv.writer(sys.stdout)
+            self.writer.writerow(['file name']+[e.expr for e in expressions])
     def act(self, source, dst):
-        self.writer.writerow([source] + flat(dst, ''))
-        
+        if not self.dry:
+            self.writer.writerow([source] + flat(dst, ''))
+
+class Fix(Action):
+    def __init__(self, expressions, dry=False):
+        resorter.modules.Set.allowed = not dry
 
 ACTIONS = {
         'copy':  {'class': Copy,  'help':'copy input file to the computed location'},
@@ -109,4 +117,5 @@ ACTIONS = {
         'print': {'class': Print, 'help':'print the source and the destination paths if they differ'},
         'csv': {'class': Csv, 'help':'output source and destination in the CSV format'},
         'zip': {'class': Zip, 'help':'archive source to a zip file. First expression computes the zip file name, second - the path inside archive'},
+        'fix': {'class': Fix, 'help':'allow file modifications'},
         }

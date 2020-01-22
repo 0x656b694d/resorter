@@ -6,9 +6,9 @@ except:
 
 import logging
 import datetime
-import resorter.modules as modules
+from resorter.modules.modules import MODULES, Module
 
-class Media(modules.Module):
+class Media(Module):
 
     @classmethod
     def functions(cls):
@@ -39,4 +39,4 @@ class Media(modules.Module):
         return None
 
 if OK:
-    modules.MODULES.append(Media)
+    MODULES.append(Media)

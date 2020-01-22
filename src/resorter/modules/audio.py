@@ -4,9 +4,9 @@ try:
 except:
     OK = False
 
-import resorter.modules as modules
+from resorter.modules.modules import MODULES, Module
 
-class Id3(modules.Module):
+class Id3(Module):
 
     @classmethod
     def functions(cls):
@@ -34,4 +34,4 @@ class Id3(modules.Module):
         return id3.__getattribute__(key.lstrip('id3_'))
 
 if OK:
-    modules.MODULES.append(Id3)
+    MODULES.append(Id3)

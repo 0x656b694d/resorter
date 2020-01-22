@@ -6,7 +6,7 @@ except:
 
 import datetime
 import logging
-import resorter.modules as modules
+from resorter.modules.modules import MODULES, Module
 
 EXIF_TAGS = {
   'make': 271,
@@ -21,6 +21,7 @@ EXIF_TAGS = {
   'redeye': 0x9209,
   'distance': 0x9206,
   'gpstime': 0x8825,
+  'orientation': 0x112,
 }
 
 FLASH = {
@@ -58,18 +59,18 @@ FLASH = {
 }
 
 def tags(cls):
-    return dict(zip(['exif_'+k for k in EXIF_TAGS.keys()], [{'func': cls.exif, 'help': 'EXIF '+k} for k in EXIF_TAGS.keys()]))
+    return dict(zip(['exif_'+k for k in EXIF_TAGS.keys()], [{'func': cls.exif, 'set': cls.setexif, 'help': 'EXIF '+k} for k in EXIF_TAGS.keys()]))
 
-class ImageData(modules.Module):
+class ImageData(Module):
     ready = False
 
     @classmethod
     def functions(cls):
         if not cls.ready:
             cls.f = {
-                'image_width': {'func': ImageData.width, 'help': r'pixel width'},
-                'image_height': {'func': ImageData.height, 'help': r'pixel height'},
-                'exif': {'func': ImageData.exif, 'help': r'True if the file has exif data'},
+                'image_width': {'func': cls.width, 'help': r'pixel width'},
+                'image_height': {'func': cls.height, 'help': r'pixel height'},
+                'exif': {'func': cls.exif, 'help': r'True if the file has exif data'},
             }
             cls.f.update(tags(cls))
             cls.ready = True
@@ -106,6 +107,21 @@ class ImageData(modules.Module):
                 v = i.getexif().get(t, None)
                 if v is not None:
                     value = ImageData.parse_exif(key, v, args)
+        return value
+
+    @staticmethod
+    def setexif(key, args):
+        i = ImageData.cache(args[0])
+        if key=='exif':
+            return True if i else False
+        if i is None:
+            return None
+        key = key[5:]
+        value = None
+        if i:
+            t = EXIF_TAGS.get(key, None)
+            if t is not None:
+                value = ImageData.write_exif(key, args)
         return value
 
     @staticmethod
@@ -155,8 +171,10 @@ class ImageData(modules.Module):
         elif key == 'time':
             date = datetime.datetime.strptime(value, '%Y:%m:%d %H:%M:%S')
             return date.strftime(args[1]) if len(args) == 2 else date
+        elif key == 'orientation':
+            return value
         if isinstance(value, str): return value.strip()
         return value
 
 if OK:
-    modules.MODULES.append(ImageData)
+    MODULES.append(ImageData)

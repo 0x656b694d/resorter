@@ -1,9 +1,9 @@
-import resorter.actions as actions
+from resorter.actions.actions import ACTIONS, Action
 import resorter.utils as utils
-import resorter.modules as modules
+from resorter.modules.modules import FUNCTIONS
 
 
-class Gpx(actions.Action):
+class Gpx(Action):
     def __init__(self, expressions, dry=False):
         self.dry = dry
         self.trk_expr = [utils.Expression(e, modules.FUNCTIONS) for e in [
@@ -39,4 +39,4 @@ class Gpx(actions.Action):
         print(r'</trk>')
         print(r'</gpx>')
 
-actions.ACTIONS.update({'gpx': {'class': Gpx, 'help':'export gpx track'}})
+ACTIONS.update({'gpx': {'class': Gpx, 'help':'export gpx track'}})

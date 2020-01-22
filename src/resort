@@ -7,14 +7,8 @@ import sys
 import traceback
 
 import resorter.utils
-import resorter.actions
-import resorter.modules
-
-import resorter.image
-import resorter.audio
-import resorter.media
-
-import resorter.gpx
+from resorter.actions.actions import ACTIONS
+from resorter.modules import modules
 
 VERSION='0.1.0'
 
@@ -23,7 +17,7 @@ def parse_args():
     Example: %(prog)s -f photos copy exif_make/name
     """
     parser = argparse.ArgumentParser(description='File organizer', prog='resort', fromfile_prefix_chars='@', epilog=examples)
-    actions = resorter.actions.ACTIONS
+    actions = ACTIONS
 
     parser.add_argument('ACTION', default='filter', nargs='?',
                         help='action to be executed over input files ({0})'.format(', '.join(actions.keys())))
@@ -101,12 +95,12 @@ def main():
         format='%(levelname)s:%(module)s.%(funcName)s: %(message)s', level=loglevel)
     
     if args.custom:
-        resorter.modules.append(args.custom)
+        modules.append(args.custom)
 
-    resorter.modules.update()
+    modules.update()
 
     if args.list_functions:
-        resorter.modules.list_functions(args.verbose)
+        modules.list_functions(args.verbose)
         return
 
     logging.debug(f'action "{args.ACTION}"')
@@ -118,22 +112,20 @@ def main():
         if e.startswith('@'):
             with open(e.lstrip('@'), 'r') as f:
                 e = ' '.join(f.readlines())
-        e = resorter.utils.Expression(e, resorter.modules.FUNCTIONS) 
+        e = resorter.utils.Expression(e, modules.FUNCTIONS) 
         expressions.append(e)
 
     files = resorter.utils.read_filenames(sys.stdin if args.input == '-' else args.input, args.recursive)
     if args.include:
-        filter_expr = resorter.utils.Expression(args.include, resorter.modules.FUNCTIONS)
+        filter_expr = resorter.utils.Expression(args.include, modules.FUNCTIONS)
         files = filter(filter_expr.calc, files)
     
-    action = resorter.actions.ACTIONS[args.ACTION]['class']
-
     ask = ask_cli if args.ask else None
     
-    action = action(expressions, args.dry_run)
+    action = ACTIONS[args.ACTION]['class'](expressions, args.dry_run)
 
     if args.sort is not None:
-        sort_expr = resorter.utils.Expression(args.sort, resorter.modules.FUNCTIONS)
+        sort_expr = resorter.utils.Expression(args.sort, modules.FUNCTIONS)
         files = sorted(files, key=lambda k: sort_expr.calc(k) or 0, reverse=args.reverse)
 
     for source in files:

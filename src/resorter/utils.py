@@ -143,10 +143,9 @@ class FuncError(Exception):
         self.funcb = funcb
 
 class FuncB(object):
-    def __init__(self, name, func, hlp):
+    def __init__(self, name, f): #name, func, hlp):
         self.name = name
-        self.func = func
-        self.help = hlp
+        self.func = f
         self.args = []
 
     def __repr__(self):
@@ -155,11 +154,18 @@ class FuncB(object):
     def call(self):
         if self.args[0] is None: return None
         try:
-            v = self.func(self.name, self.args)
+            v = self.func['func'](self.name, self.args)
             logging.debug(f'{self.name}({self.args!r}) returned {v}')
             return v
         except Exception as e:
             raise FuncError(e, self)
+
+class Caller(object):
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, name, args):
+        return self.func(name, args)
 
 class Expression(object):
     def __init__(self, expr, keywords):
@@ -172,7 +178,7 @@ class Expression(object):
             kind, value = kv
             if kind == 'FUNC':
                 f = keywords[value.name]
-                kv[1] = FuncB(value.name, f['func'], f['help'])
+                kv[1] = FuncB(value.name, f)
                 logging.debug(f'found FUNC {value.name}: {kv[1]!r}')
 
     def calc(self, source):
@@ -203,7 +209,9 @@ class Expression(object):
                 a = result.pop()
                 logging.debug(f'appending left op to {b}')
                 if isinstance(b, FuncB):
-                    b.args[0] = callf(a)
+                    logging.debug(f'{a}')
+                    b.args[0] = a if isinstance(b.func['func'], Caller) else callf(a)
+                    logging.debug(f'new args {b.args}')
                     result.append(callf(b))
                 else:
                     result.append(a+'.'+b)

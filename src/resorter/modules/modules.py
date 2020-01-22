@@ -1,9 +1,5 @@
 import os
-import re
-from datetime import datetime
 import logging
-import codecs
-import pathlib
 import subprocess
 import resorter.utils
 
@@ -189,86 +185,19 @@ class Counter(Module):
             Counter.count += Counter.step
         return Counter.count
 
-class FileInfo(Module):
+class Set(Module):
+    allowed = False
 
     @classmethod
     def functions(cls):
-        return {
-                'name': {'func': cls.name, 'help': 'file name with extension, without path', 'example': 'name'},
-                'path': {'func': cls.path, 'help': 'file path without file name', 'args': ['last parent index'], 'example': 'path[2]', 'source': 'a/b/c/name.ext'},
-                'parent': {'func': cls.path, 'help': 'file path without file name', 'args': ['parent index'], 'example': 'parent[1]'},
-                'abspath': {'func': cls.abspath, 'help': 'absolute file path without file name', 'example': 'abspath'},
-                'ext': {'func': cls.ext, 'help': 'file extension with leading dot', 'example': 'ext'},
-                'nam': {'func': cls.nam, 'help': 'file name without extension', 'example': 'nam'},
-                'size': {'func': cls.size, 'help': r'file size in bytes', 'args': ['metric prefix k/m/g/t/p'], 'example': 'size[m]', 'output': 42},
-                'atime': {'func': cls.atime, 'help': r'file last access time', 'args': ['python time format string'], 'example': "atime['%Y']", 'output': '2019'},
-                'ctime': {'func': cls.ctime, 'help': r'file creation time', 'args': ['python time format string'], 'example': "ctime['%Y']", 'output': '2019'},
-                'mtime': {'func': cls.mtime, 'help': r'file last modification time', 'args': ['python time format string'], 'example': "mtime['%Y']", 'output': '2019'},
-        }
-
-    @classmethod
-    def open(cls, f):
-        return os.stat(f)
+        return { 'set': { 'func': resorter.utils.Caller(cls.set), 'help': 'calls the modifier version of a function. Requires use of the `fix` action' } }
 
     @staticmethod
-    def name(_, args):
-        return Module.slice(os.path.basename(args[0]), Module.range(args[1:]))
-    @staticmethod
-    def abspath(_, args):
-        return Module.slice(os.path.abspath(os.path.dirname(args[0])), Module.range(args[1:]))
-    @staticmethod
-    def path(_, args):
-        if len(args)>1:
-            p = os.sep.join(pathlib.PurePath(args[0]).parts[-args[1]-1:-1])
-        else:
-            p = os.path.dirname(args[0])
-        return p
-    @staticmethod
-    def parent(_, args):
-        if len(args)>1:
-            p = pathlib.PurePath(args[0]).parts[-args[1]-1]
-        else:
-            p = os.path.basename(os.path.dirname(args[0]))
-        return p
-    @staticmethod
-    def ext(_, args):
-        _, ext = os.path.splitext(args[0])
-        return Module.slice(ext, Module.range(args[1:]))
-    @staticmethod
-    def nam(_, args):
-        root, _ = os.path.splitext(os.path.basename(args[0]))
-        return Module.slice(root, Module.range(args[1:]))
-
-    @staticmethod
-    def size(_, args):
-        s = FileInfo.cache(args[0]).st_size
-        if len(args) == 1:
-            return s
-        args = args[1]
-        if args in 'kK': s = s / 1024
-        elif args in 'mM': s = s / 1024 / 1024
-        elif args in 'gG': s = s / 1024 / 1024 / 1024
-        elif args in 'tT': s = s / 1024 / 1024 / 1024 / 1024
-        elif args in 'pP': s = s / 1024 / 1024 / 1024 / 1024 / 1024
-        return s
-
-    @staticmethod
-    def get_time(st_t, fmt):
-        t = datetime.fromtimestamp(st_t)
-        fmt = fmt[1] if len(fmt) == 2 else None
-        return t.strftime(fmt) if fmt else t
-
-    @staticmethod
-    def atime(_, args):
-        return FileInfo.get_time(FileInfo.cache(args[0]).st_atime, args)
-
-    @staticmethod
-    def mtime(_, args):
-        return FileInfo.get_time(FileInfo.cache(args[0]).st_mtime, args)
-
-    @staticmethod
-    def ctime(_, args):
-        return FileInfo.get_time(FileInfo.cache(args[0]).st_ctime, args)
+    def set(_, args):
+        if not Set.allowed: return None
+        f = args[0]
+        logging.debug(f'calling set {f.name} with {args[1:]}')
+        return args[0].func['set'](f.name, f.args + args[1:])
 
 class Custom(Module):
     
@@ -285,13 +214,15 @@ class Custom(Module):
         p = subprocess.run([script]+[os.fsencode(a) for a in args], stdout=subprocess.PIPE, check=True)# python 3.8: capture_output=True)
         return p.stdout.decode().replace('\n', '').replace('\r', '')
 
-MODULES=[Text, Num, List, Counter, FileInfo, Conditions, Custom]
+MODULES=[Text, Num, List, Counter, Conditions, Set, Custom]
 FUNCTIONS={}
 
 def example(f):
     source = f.get('source', 'some/path/name.ext')
     args = f.get('args', None)
     text = ''
+    if f.get('set', None):
+        text += f'. Modifiable via .set()'
     if args: text += f'. Arguments: {args}'
     ex = f.get('example', None)
     if ex:

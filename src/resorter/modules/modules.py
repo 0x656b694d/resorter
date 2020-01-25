@@ -222,9 +222,9 @@ class Custom(Module):
 
     @staticmethod
     def call(key, args):
-        command = shlex.split(Custom.funcs[key]['command'])
-        logging.debug(f'calling {key}: {command} {args}')
-        p = subprocess.run(command + [os.fsencode(a) for a in args], stdout=subprocess.PIPE, check=True)# python 3.8: capture_output=True)
+        command = shlex.split(Custom.funcs[key]['command']) + args
+        logging.debug(f'calling {key}: {command}')
+        p = subprocess.run(command, stdout=subprocess.PIPE, check=True)# python 3.8: capture_output=True)
         return p.stdout.decode().replace('\n', '').replace('\r', '')
 
 MODULES=[Text, Num, List, Counter, Conditions, Set, Custom]

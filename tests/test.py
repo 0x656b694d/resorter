@@ -159,6 +159,54 @@ def process(files, expr, ask):
         yield (source, expr.calc(source))
     return True
 
+def test_all(test, names, expressions):
+    files = list(resorter.utils.read_filenames(names, False))
+    for expr,expected in expressions:
+        for source,dest in process(files, expr, ask_test):
+            test.assertEqual(expected, dest)
+
+class TestModule(modules.Module):
+    tester = None
+
+    @classmethod
+    def functions(cls):
+        return { 'test': { 'func': cls.tst, 'set': cls.set, 'help': 'test' } }
+
+    @staticmethod
+    def tst(key, args):
+        TestModule.tester.assertEqual(key, 'test')
+        return args[-1]
+    @staticmethod
+    def set(key, args):
+        TestModule.tester.assertEqual(key, 'test')
+        return args[-1]
+
+modules.MODULES.append(TestModule)
+
+class TestFunctions(unittest.TestCase):
+    def test_simple(self):
+        TestModule.tester = self
+        modules.Set.allowed = False
+        name = 'path/name.ext'
+        expressions = [
+            (r'test', name),
+            (r'test("abc")', 'abc'),
+            (r'test.set("xyz")', None),
+            ]
+        test_all(self, [name], expressions)
+    
+    def test_allowed(self):
+        TestModule.tester = self
+        name = 'path/name.ext'
+        expressions = [
+            (r'test', name),
+            (r'test("abc")', 'abc'),
+            (r'test.set("xyz")', 'xyz'),
+            ]
+        modules.Set.allowed = True
+        test_all(self, [name], expressions)
+        modules.Set.allowed = False
+
 class TestExpressions(unittest.TestCase):
     def test_abs_name(self):
         name = '/abs/path/name.ext'
@@ -169,11 +217,7 @@ class TestExpressions(unittest.TestCase):
                 (r'{nam}', 'name'),
                 (r'{abspath}', '/abs/path'),
                 ]
-        files = (resorter.utils.read_filenames([name], False))
-        for expr,expected in expressions:
-            for source,dest in process(files, expr, ask_test):
-                self.assertEqual(source, name)
-                self.assertEqual(expected, dest)
+        test_all(self, [name], expressions)
     
     def test_hidden_name(self):
         name = 'rel/path/.name'
@@ -184,11 +228,7 @@ class TestExpressions(unittest.TestCase):
                 (r'{nam}', '.name'),
                 (r'{abspath}', os.path.abspath(os.path.curdir) + '/rel/path'),
                 ]
-        files = list(resorter.utils.read_filenames([name], False))
-        for expr,expected in expressions:
-            for source,dest in process(files, expr, ask_test):
-                self.assertEqual(source, name)
-                self.assertEqual(expected, dest)
+        test_all(self, [name], expressions)
 
     def test_list(self):
         name = 'some/path/filename.ext'
@@ -198,11 +238,8 @@ class TestExpressions(unittest.TestCase):
                 (r'(path,ext).join["x"]', 'some/pathx.ext'),
                 (r'(path,ext).join', 'some/path-.ext'),
                 ]
-        files = list(resorter.utils.read_filenames([name], False))
-        for expr,expected in expressions:
-            for source,dest in process(files, expr, ask_test):
-                self.assertEqual(source, name)
-                self.assertEqual(expected, dest)
+        test_all(self, [name], expressions)
+
     def test_text(self):
         name = 'some_PATH string'
         expressions = [
@@ -221,11 +258,7 @@ class TestExpressions(unittest.TestCase):
                 (r'name:len+xx', name+str(len(name))+'xx'),
                 (r'/name', '/'+name),
                 ]
-        files = list(resorter.utils.read_filenames([name], False))
-        for expr,expected in expressions:
-            for source,dest in process(files, expr, ask_test):
-                self.assertEqual(source, name)
-                self.assertEqual(expected, dest)
+        test_all(self, [name], expressions)
 
     def test_num(self):
         name = 'path/some_42.65_'
@@ -245,11 +278,7 @@ class TestExpressions(unittest.TestCase):
                 (r'{2^3}', 8),
                 (r'{-2^3}', -8),
                 ]
-        files = list(resorter.utils.read_filenames([name], False))
-        for expr,expected in expressions:
-            for source,dest in process(files, expr, ask_test):
-                self.assertEqual(source, name)
-                self.assertEqual(expected, dest)
+        test_all(self, [name], expressions)
 
     def test_conditions(self):
         name = 'Hello'
@@ -271,11 +300,7 @@ class TestExpressions(unittest.TestCase):
                 (r'name.if(name=="Hello", 15)', 15),
                 (r'name.if(name!="Hello", 15)', name),
                 ]
-        files = list(resorter.utils.read_filenames([name], False))
-        for expr,expected in expressions:
-            for source,dest in process(files, expr, ask_test):
-                self.assertEqual(source, name)
-                self.assertEqual(expected, dest)
+        test_all(self, [name], expressions)
 
     def test_comp(self):
         expressions = [
@@ -290,20 +315,16 @@ class TestExpressions(unittest.TestCase):
                 (r'2>1', True),
                 (r'2<1', False),
                 ]
-        files = list(resorter.utils.read_filenames(['name'], False))
-        for expr,expected in expressions:
-            for source,dest in process(files, expr, ask_test):
-                self.assertEqual(expected, dest)
+        test_all(self, ['name'], expressions)
 
     def test_counter(self):
         expressions = [
-                (r'name+counter[10,2]', ['a10','b12']),
+                (r'name+counter[10,2]', [('a', 'a10'), ('b', 'b12')]),
                 ]
         files = list(resorter.utils.read_filenames(['a','b'], False))
         for expr,expected in expressions:
             result = process(files, expr, ask_test)
-            for e,r in zip(expected, result):
-                self.assertEqual(e,r[1])
+            self.assertEqual(expected, list(result));
 
 
 if __name__=='__main__':

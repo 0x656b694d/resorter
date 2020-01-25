@@ -66,13 +66,20 @@ class Conditions(Module):
                 'all': {'func': cls.aall, 'help': r'true if all of arguments are true', 'args': ['condition', '...']},
                 'in': {'func': cls.een, 'help': r'check agains a list of options', 'args': ['option', '...'], 'example': 'ext.in(".ext",".xls")'},
                 'not': {'func': cls.noot, 'help': r'negation', 'args': ['condition'], 'example': 'not(ext==".jpg")'},
+                'none': {'func': cls.none, 'help': r'returns none value. If the whole expressions computes to none, the source file is skipped', 'example': 'if(ext==".txt",nam.cap,none)'},
         }
-
+    @staticmethod
+    def none(_, args):
+        return None
     @staticmethod
     def eef(_, args):
-        if len(args) == 3:
-            return args[1] if args[0] else args[2]
-        return args[2] if args[1] else args[3]
+        if len(args) == 4: # source -> if(cond,t,f)
+            return args[2] if args[1] else args[3]
+        if len(args) == 3: # source -> if(cond,t)
+            return args[2] if args[1] else args[0]
+        if len(args) == 2: # source -> if(cond)
+            return args[0] if args[1] else None
+        raise RuntimeError("Wrong number of arguments")
     @staticmethod
     def aany(_, args):
         return any(args[1:])

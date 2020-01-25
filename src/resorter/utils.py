@@ -216,7 +216,15 @@ class Expression(object):
                     logging.debug(f'new args {b.args}')
                     result.append(callf(b))
                 else:
-                    result.append(a+'.'+b)
+                    result.append(callf(a)+'.'+b)
+            elif kind == 'OP' and value == '||':
+                b = result.pop()
+                a = result.pop()
+                result.append(callf(a) or callf(b))
+            elif kind == 'OP' and value == '&&':
+                b = result.pop()
+                a = result.pop()
+                result.append(callf(a) and callf(b))
             elif kind == 'OP':
                 b = callf(result.pop())
                 a = callf(result.pop())
@@ -227,13 +235,9 @@ class Expression(object):
                     else:
                         result.append([a,b])
                 elif value == ':':
-                    result.append(str(a)+str(b))
+                    result.append(str(a) + str(b))
                 elif value in LOGIC or value in COMP:
-                    if value == '||':
-                        result.append(a or b)
-                    elif value == '&&':
-                        result.append(a and b)
-                    elif value == '<':
+                    if value == '<':
                         result.append(a < b)
                     elif value == '>':
                         result.append(a > b)
@@ -250,7 +254,6 @@ class Expression(object):
                         b = str(b)
                         result.append(True if re.fullmatch(b, a) else False)
                 elif type(a) in (int, float) and type(b) in (int, float): # numeric
-
                     if type(a) not in (int, float):
                         a = str(a)
                         a = (float if '.' in a else int)(a)

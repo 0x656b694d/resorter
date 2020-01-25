@@ -206,18 +206,18 @@ class TestExpressions(unittest.TestCase):
     def test_text(self):
         name = 'some_PATH string'
         expressions = [
-                (r'{name}', name),
-                (r'{name.up}', 'SOME_PATH STRING'),
-                (r'{name.low}', 'some_path string'),
-                (r'{name.cap}', 'Some_path string'),
-                (r'{name.title}', 'Some_Path String'),
-                (r'{name.sub[1,4]}', 'ome'),
-                (r'{name.sub[4]}', '_'),
-                (r'{name.replace[" ","_"]}', 'some_PATH_string'),
-                (r'{name.replace["PATH","xxx"]}', 'some_xxx string'),
-                (r'{name.index["PATH"]}', 5),
-                (r'{name.len}', len(name)),
-                (r'{name[len(name)-6, len(name)]}', 'string'),
+                (r'name', name),
+                (r'name.up', 'SOME_PATH STRING'),
+                (r'name.low', 'some_path string'),
+                (r'name.cap', 'Some_path string'),
+                (r'name.title', 'Some_Path String'),
+                (r'name.sub[1,4]', 'ome'),
+                (r'name.sub[4]', '_'),
+                (r'name.replace[" ","_"]', 'some_PATH_string'),
+                (r'name.replace["PATH","xxx"]', 'some_xxx string'),
+                (r'name.index["PATH"]', 5),
+                (r'name.len', len(name)),
+                (r'name[len(name)-6, len(name)]', 'string'),
                 (r'name:len+xx', name+str(len(name))+'xx'),
                 (r'/name', '/'+name),
                 ]
@@ -254,14 +254,22 @@ class TestExpressions(unittest.TestCase):
     def test_conditions(self):
         name = 'Hello'
         expressions = [
-                (r'{name.in("Goodbye","Hello","Hi")}', True),
-                (r'{name.in("Goodbye","Hi")}', False),
-                (r'{all("Goodbye",name=="Hello")}', True),
-                (r'{any("Goodbye",name=="xx")}', True),
-                (r'{not(name=="xx")}', True),
-                (r'{if(name=="Hello", 12, 14)}', 12),
-                (r'{if(name~="H.l+o", 12, 14)}', 12),
-                (r'{if(name=="Hlo", 12, 14)}', 14),
+                (r'name.in("Goodbye","Hello","Hi")', True),
+                (r'name.in("Goodbye","Hi")', False),
+                (r'all("Goodbye",name=="Hello")', True),
+                (r'any("Goodbye",name=="xx")', True),
+                (r'not(name=="xx")', True),
+                (r'if(name=="Hello", 12, 14)', 12),
+                (r'if(name~="H.l+o", 12, 14)', 12),
+                (r'if(name=="Hlo", 12, 14)', 14),
+                (r'if(name=="Hlo", 12)', name),
+                (r'if(name=="Hello", 12)', 12),
+                (r'if(name=="Hlo")', None),
+                (r'if(name=="Hello")', name),
+                (r'name.if(name=="Hello")', name),
+                (r'name.if(name!="Hello")', None),
+                (r'name.if(name=="Hello", 15)', 15),
+                (r'name.if(name!="Hello", 15)', name),
                 ]
         files = list(resorter.utils.read_filenames([name], False))
         for expr,expected in expressions:
@@ -271,16 +279,16 @@ class TestExpressions(unittest.TestCase):
 
     def test_comp(self):
         expressions = [
-                (r'{2=3}', False),
-                (r'{2=2}', True),
-                (r'{2<>2}', False),
-                (r'{2!=4}', True),
-                (r'{2>=2}', True),
-                (r'{2>=1}', True),
-                (r'{2<=2}', True),
-                (r'{2<=3}', True),
-                (r'{2>1}', True),
-                (r'{2<1}', False),
+                (r'2=3', False),
+                (r'2=2', True),
+                (r'2<>2', False),
+                (r'2!=4', True),
+                (r'2>=2', True),
+                (r'2>=1', True),
+                (r'2<=2', True),
+                (r'2<=3', True),
+                (r'2>1', True),
+                (r'2<1', False),
                 ]
         files = list(resorter.utils.read_filenames(['name'], False))
         for expr,expected in expressions:

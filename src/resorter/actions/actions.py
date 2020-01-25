@@ -92,7 +92,7 @@ class Filter(Action):
 
 class Print(Action):
     def act(self, source, dst):
-        row = ' '.join(flat(dst, '?'))
+        row = ' '.join(str(f) for f in flat(dst, '?'))
         if source != row:
             print(shlex.quote(source), shlex.quote(row), sep=' ')
 

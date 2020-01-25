@@ -30,9 +30,6 @@ def parse_args():
     parser.add_argument('-r', '--recursive', dest='recursive', action='store_true',
                         help='scan directories recursively')
 
-    parser.add_argument('-if', '--include', metavar='EXPR', dest='include',
-                        help=r'expression for the input files to be included')
-
     parser.add_argument('-S', '--sort', metavar='EXPR', dest='sort',
                         help=r'sort by EXPR. Example: `name`')
     parser.add_argument('-R', '--reverse', dest='reverse', action='store_true',
@@ -105,7 +102,6 @@ def main():
 
     logging.debug(f'action "{args.ACTION}"')
     logging.debug(f'expr "{args.EXPRESSION}"')
-    logging.debug(f'filter "{args.include}"')
 
     expressions = []
     for e in args.EXPRESSION:
@@ -116,9 +112,6 @@ def main():
         expressions.append(e)
 
     files = resorter.utils.read_filenames(sys.stdin if args.input == '-' else args.input, args.recursive)
-    if args.include:
-        filter_expr = resorter.utils.Expression(args.include, modules.FUNCTIONS)
-        files = filter(filter_expr.calc, files)
     
     ask = ask_cli if args.ask else None
     
@@ -130,8 +123,8 @@ def main():
 
     for source in files:
         try:
-            d = [e.calc(source) for e in expressions]
-            question = ('dry ' if args.dry_run else '') + f'{args.ACTION}: {source} -> {d}'
+            destination = [e.calc(source) for e in expressions]
+            question = ('dry ' if args.dry_run else '') + f'{args.ACTION}: {source} -> {destination}'
             logging.debug(question)
             if ask:
                 print(question, file=sys.stderr)
@@ -143,7 +136,10 @@ def main():
                     break
             elif args.verbose:
                 print(question, file=sys.stderr)
-            action.act(source, d)
+            if any(d is not None for d in destination):
+                action.act(source, destination)
+            else:
+                logging.warning("None destination")
         except resorter.utils.FuncError as e:
             logging.error(f'Exception: {e}')
             if loglevel == logging.DEBUG:

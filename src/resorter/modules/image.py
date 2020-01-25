@@ -59,7 +59,7 @@ FLASH = {
 }
 
 def tags(cls):
-    return dict(zip(['exif_'+k for k in EXIF_TAGS.keys()], [{'func': cls.exif, 'set': cls.setexif, 'help': 'EXIF '+k} for k in EXIF_TAGS.keys()]))
+    return dict(zip(['exif_'+k for k in EXIF_TAGS.keys()], [{'func': cls.exif, 'help': 'EXIF '+k} for k in EXIF_TAGS.keys()]))
 
 class ImageData(Module):
     ready = False
@@ -107,21 +107,6 @@ class ImageData(Module):
                 v = i.getexif().get(t, None)
                 if v is not None:
                     value = ImageData.parse_exif(key, v, args)
-        return value
-
-    @staticmethod
-    def setexif(key, args):
-        i = ImageData.cache(args[0])
-        if key=='exif':
-            return True if i else False
-        if i is None:
-            return None
-        key = key[5:]
-        value = None
-        if i:
-            t = EXIF_TAGS.get(key, None)
-            if t is not None:
-                value = ImageData.write_exif(key, args)
         return value
 
     @staticmethod

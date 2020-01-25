@@ -221,13 +221,11 @@ def example(f):
     source = f.get('source', 'some/path/name.ext')
     args = f.get('args', None)
     text = ''
-    if f.get('set', None):
-        text += f'. Modifiable via .set()'
-    if args: text += f'. Arguments: {args}'
+    if args: text += f'\n\t\tArguments: {args}'
     ex = f.get('example', None)
     if ex:
         result = f.get('output', None) or resorter.utils.Expression(ex, FUNCTIONS).calc(source)
-        text += f'. Example: {source} -> {ex} -> {result}'
+        text += f'\n\t\tExample: {source} -> {ex} -> {result}'
     return text
 
 def update():
@@ -249,6 +247,8 @@ def list_functions(verbose):
         print(m.__name__)
         for k,v in m.functions().items():
             text = f'\t{k} - {v["help"]}'
+            if v.get('set', None):
+                text += f'. Modifiable via .set()'
             if verbose:
                 text += example(v)
             print(text)

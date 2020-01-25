@@ -12,9 +12,10 @@ class PathEntry(object): # DirEntry alike
         return self.stat
 
 def read_filenames(source, recursive):
-    if isinstance(source, str): # dir
+    if isinstance(source, str) or isinstance(source, bytes): # dir
         logging.info(f'scanning directory {source}')
-        with os.scandir(os.fsencode(source)) as it:
+        source = os.fsencode(source)
+        with os.scandir(source) as it:
             for entry in it:
                 if not entry.is_dir():
                     logging.info(f'found {entry.path}')
@@ -24,7 +25,8 @@ def read_filenames(source, recursive):
                     yield from read_filenames(entry.path, recursive)
                 else:
                     logging.info(f'skipping {entry.path}')
-    else:
+    elif isinstance(source, list):
+        logging.debug(f'reading lines from {source}')
         for line in source:
             line = line.rstrip('\r\n')
             if len(line) == 0: continue

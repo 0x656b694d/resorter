@@ -24,6 +24,6 @@ $ resort print "'nick@myserver:/files/'+name" | xargs -n 2 scp
 
 * add the artist name to the jpg images if made with Canon:
 ```
-resort "if(ext=='.jpg' && exif_make=='Canon')" | xargs -n 1 exiv2 mo -M "set Exif.Image.Artist Vincent"
+resort filter "if(ext=='.jpg' && exif_make=='Canon')" | xargs -n 1 exiv2 mo -M "set Exif.Image.Artist Vincent"
 ```
 

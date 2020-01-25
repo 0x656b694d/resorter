@@ -35,10 +35,11 @@ def parse_args():
     parser.add_argument('-R', '--reverse', dest='reverse', action='store_true',
                         help=r'reverse sort order, if sorting is requested')
 
-    parser.add_argument('-c', '--custom', metavar='SCRIPT', dest='custom', action='append',
-                        help=r'custom functions. The SCRIPT name without extension to be used in expressions. '
-                             r'The SCRIPT will be provided with the source file path and other parameters via the command line arguments. '
-                             r'The SCRIPT should return the new path')
+    parser.add_argument('-c', '--custom', metavar='COMMAND', dest='custom', action='append',
+                        help=r'custom functions. Use name=command syntax to assign a name to be used in expression. '
+                             r'The COMMAND will be provided with the source file path and other parameters via the command line arguments. '
+                             r'The COMMAND standard output will be used for further calculations. '
+                             r'Example: `resort -c type=file filter "if(type.has(' "'OpenDocument'" '))"`')
 
     parser.add_argument('-s', '--silent', dest='silent', action='store_true',
                         help='be silent')

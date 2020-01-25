@@ -1,6 +1,7 @@
 import os
 import logging
 import subprocess
+import shlex
 import resorter.utils
 
 class Module(object):
@@ -67,7 +68,12 @@ class Conditions(Module):
                 'in': {'func': cls.een, 'help': r'check agains a list of options', 'args': ['option', '...'], 'example': 'ext.in(".ext",".xls")'},
                 'not': {'func': cls.noot, 'help': r'negation', 'args': ['condition'], 'example': 'not(ext==".jpg")'},
                 'none': {'func': cls.none, 'help': r'returns none value. If the whole expressions computes to none, the source file is skipped', 'example': 'if(ext==".txt",nam.cap,none)'},
+                'has': {'func': cls.has, 'help': r'return true if some of the arguments present in the source', 'args': [ 'keywords' ], 'example': 'path.has("etc", "path")'},
         }
+    @staticmethod
+    def has(_, args):
+        if len(args) < 2: raise RuntimeError("Wrong number of arguments")
+        return any(a in args[0] for a in args[1:])
     @staticmethod
     def none(_, args):
         return None
@@ -216,9 +222,9 @@ class Custom(Module):
 
     @staticmethod
     def call(key, args):
-        script = Custom.funcs[key]['help']
-        logging.debug(f'calling {key}: {script} {args}')
-        p = subprocess.run([script]+[os.fsencode(a) for a in args], stdout=subprocess.PIPE, check=True)# python 3.8: capture_output=True)
+        command = shlex.split(Custom.funcs[key]['command'])
+        logging.debug(f'calling {key}: {command} {args}')
+        p = subprocess.run(command + [os.fsencode(a) for a in args], stdout=subprocess.PIPE, check=True)# python 3.8: capture_output=True)
         return p.stdout.decode().replace('\n', '').replace('\r', '')
 
 MODULES=[Text, Num, List, Counter, Conditions, Set, Custom]
@@ -243,9 +249,9 @@ def update():
 
 def append(scripts):
     for script in scripts:
-        name, _ = os.path.splitext(os.path.basename(script))
-        logging.debug(f'custom script {name}: {script}')
-        Custom.funcs[name] = {'func': Custom.call, 'help': script}
+        name, command = script.split('=', 1)
+        logging.debug(f'custom script {name}: {command}')
+        Custom.funcs[name] = {'func': Custom.call, 'help': f'`{command} <source> <args>`', 'args': ['additional command arguments'], 'command': command }
 
 def list_functions(verbose):
     for m in MODULES:

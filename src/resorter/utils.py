@@ -189,9 +189,12 @@ class Expression(object):
         class Args(): pass
 
         def callf(funcarg):
-            if not isinstance(funcarg, FuncB):
-                return funcarg
-            return funcarg.call()
+            if isinstance(funcarg, list):
+                return [ f.call() if isinstance(funcarg, FuncB) else f for f in funcarg ]
+
+            while isinstance(funcarg, FuncB):
+                funcarg = funcarg.call()
+            return funcarg
 
         for kind, value in self.polish:
             logging.debug(f'... {kind} {value}')
@@ -211,10 +214,12 @@ class Expression(object):
                 a = result.pop()
                 logging.debug(f'appending left op to {b}')
                 if isinstance(b, FuncB):
-                    logging.debug(f'{a}')
-                    b.args[0] = a if isinstance(b.func['func'], Caller) else callf(a)
-                    logging.debug(f'new args {b.args}')
-                    result.append(callf(b))
+                    if isinstance(b.func['func'], Caller):
+                        b.args[0] = a
+                        result.append(b)
+                    else:
+                        b.args[0] = callf(a)
+                        result.append(callf(b))
                 else:
                     result.append(callf(a)+'.'+b)
             elif kind == 'OP' and value == '||':
@@ -225,16 +230,22 @@ class Expression(object):
                 b = result.pop()
                 a = result.pop()
                 result.append(callf(a) and callf(b))
+            elif kind == 'OP' and value == ',':
+                b = result.pop()
+                a = result.pop()
+                if isinstance(a, FuncB) and not isinstance(a.func['func'], Caller):
+                    a = callf(a)
+                if isinstance(b, FuncB) and not isinstance(b.func['func'], Caller):
+                    b = callf(b)
+                if isinstance(a, list):
+                    a.append(b)
+                    result.append(a)
+                else:
+                    result.append([a,b])
             elif kind == 'OP':
                 b = callf(result.pop())
                 a = callf(result.pop())
-                if value == ',':
-                    if isinstance(a, list):
-                        a.append(b)
-                        result.append(a)
-                    else:
-                        result.append([a,b])
-                elif value == ':':
+                if value == ':':
                     result.append(str(a) + str(b))
                 elif value in LOGIC or value in COMP:
                     if value == '<':
@@ -304,8 +315,12 @@ class Expression(object):
                 result.append(value)
             logging.debug(f'result: {result!r}')
         
-        result = callf(result.pop())
+        value = []
+        while len(result):
+            value.append(callf(result.pop()))
+        if len(value) == 1:
+            value = value[0]
 
-        logging.debug(f'computed {result!r}')
-        return result
+        logging.debug(f'computed {value!r}')
+        return value
 

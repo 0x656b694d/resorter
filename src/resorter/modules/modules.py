@@ -209,7 +209,10 @@ class Set(Module):
     def set(_, args):
         if not Set.allowed: return None
         f = args[0]
-        logging.debug(f'calling set {f.name} with {args[1:]}')
+        logging.info(f'calling set {f.name} with {args[1:]}')
+        if Set.allowed == 'dry':
+            print(f'Dry call to set {f.name} on {f.args[0]} with {args[1:]}')
+            return f.args[0]
         return args[0].func['set'](f.name, f.args + args[1:])
 
 class Custom(Module):

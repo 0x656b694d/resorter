@@ -135,9 +135,9 @@ def main():
                     continue
                 elif answer in options['Quit']:
                     break
-            elif args.verbose:
-                print(question, file=sys.stderr)
             if any(d is not None for d in destination):
+                if not ask and args.verbose:
+                    print(question, file=sys.stderr)
                 action.act(source, destination)
             else:
                 logging.warning("None destination")

@@ -167,26 +167,37 @@ def test_all(test, names, expressions):
 
 class TestModule(modules.Module):
     tester = None
+    called_get = False
+    called_set = False
+
+    @staticmethod
+    def init(tester):
+        TestModule.tester = tester
+        TestModule.called_get = False
+        TestModule.called_set = False
 
     @classmethod
     def functions(cls):
-        return { 'test': { 'func': cls.tst, 'set': cls.set, 'help': 'test' } }
+        return { 'test': { 'func': cls.get, 'set': cls.set, 'help': 'test' } }
 
     @staticmethod
-    def tst(key, args):
+    def get(key, args):
         TestModule.tester.assertEqual(key, 'test')
+        TestModule.called_get = True
         return args[-1]
+
     @staticmethod
     def set(key, args):
         TestModule.tester.assertEqual(key, 'test')
+        TestModule.called_set = True
         return args[-1]
 
 modules.MODULES.append(TestModule)
 
 class TestFunctions(unittest.TestCase):
     def test_simple(self):
-        TestModule.tester = self
         modules.Set.allowed = False
+        TestModule.init(self)
         name = 'path/name.ext'
         expressions = [
             (r'test', name),
@@ -194,9 +205,11 @@ class TestFunctions(unittest.TestCase):
             (r'test.set("xyz")', None),
             ]
         test_all(self, [name], expressions)
+        self.assertTrue(TestModule.called_get)
+        self.assertFalse(TestModule.called_set)
     
     def test_allowed(self):
-        TestModule.tester = self
+        TestModule.init(self)
         name = 'path/name.ext'
         expressions = [
             (r'test', name),
@@ -205,7 +218,31 @@ class TestFunctions(unittest.TestCase):
             ]
         modules.Set.allowed = True
         test_all(self, [name], expressions)
+        self.assertTrue(TestModule.called_get)
+        self.assertTrue(TestModule.called_set)
         modules.Set.allowed = False
+
+    def test_lazy(self):
+        TestModule.init(self)
+        name = 'path/name.ext'
+        expressions = [
+            (r'if(nam=="name",test.set("xyz"),none)', 'xyz'),
+            ]
+        modules.Set.allowed = True
+        test_all(self, [name], expressions)
+        self.assertFalse(TestModule.called_get)
+        self.assertTrue(TestModule.called_set)
+
+        TestModule.init(self)
+        expressions = [
+            (r'if(nam=="xxx",test.set("xyz"),none)', None),
+            (r'if(nam=="name",none,test.set("xyz"))', None),
+            ]
+        test_all(self, [name], expressions)
+        self.assertFalse(TestModule.called_get)
+        self.assertFalse(TestModule.called_set)
+        modules.Set.allowed = False
+
 
 class TestExpressions(unittest.TestCase):
     def test_abs_name(self):

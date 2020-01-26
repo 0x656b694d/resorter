@@ -108,7 +108,7 @@ class Csv(Action):
 
 class Fix(Action):
     def __init__(self, expressions, dry=False):
-        Set.allowed = not dry
+        Set.allowed = 'dry' if dry else True
 
 ACTIONS = {
         'copy':  {'class': Copy,  'help':'copy input file to the computed location'},
